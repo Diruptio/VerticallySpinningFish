@@ -18,6 +18,7 @@ repositories {
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2")
     implementation("diruptio:DiruptioUtil:1.6.28")
+    implementation("com.github.docker-java:docker-java:3.5.3")
 }
 
 tasks {
@@ -29,10 +30,10 @@ tasks {
     jar {
         from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        archiveFileName = "HorizontalSpinningFish.jar"
+        archiveFileName = "VerticallySpinningFish.jar"
         manifest {
-            attributes["Main-Class"] = "diruptio.horizontallyspinningfish.HorizontallySpinningFish"
-            attributes["Implementation-Title"] = "Horizontally spinning fish"
+            attributes["Main-Class"] = "diruptio.verticallyspinningfish.VerticallySpinningFish"
+            attributes["Implementation-Title"] = "Vertically spinning fish"
             attributes["Implementation-Version"] = version
             attributes["Implementation-Vendor"] = "Diruptio"
         }

@@ -1,1 +1,1 @@
-rootProject.name = "HorizontallySpinningFish"
+rootProject.name = "VerticallySpinningFish"
