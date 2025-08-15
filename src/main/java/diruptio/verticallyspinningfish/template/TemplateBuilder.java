@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.List;
 import com.google.common.hash.Hashing;
 import diruptio.util.config.ConfigSection;
-import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,16 +25,23 @@ public class TemplateBuilder {
 
     public static @NotNull Path build(@NotNull List<TemplateStep> template) throws Exception {
         String hash = Hashing.sha256().hashString("", StandardCharsets.UTF_8).toString();
-        Path templateDir = VerticallySpinningFish.cacheDir("templates/" + hash);
+        Path templateDir = Path.of("cache", "templates", hash);
+        if (!Files.exists(templateDir)) {
+            Files.createDirectories(templateDir);
+        }
+
         for (TemplateStep step : template) {
             hash = Hashing.sha256().hashString(hash + step.hash(), StandardCharsets.UTF_8).toString();
             Path newTemplateDir = Path.of("cache", "templates", hash);
+
             if (!Files.exists(newTemplateDir)) {
                 FileUtils.copyDirectory(templateDir.toFile(), newTemplateDir.toFile());
-                templateDir = newTemplateDir;
                 step.apply(templateDir);
             }
+
+            templateDir = newTemplateDir;
         }
+
         return templateDir;
     }
 }
