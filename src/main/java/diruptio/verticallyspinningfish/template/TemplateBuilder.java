@@ -17,6 +17,7 @@ public class TemplateBuilder {
         String type = config.get("type").toString();
 
         return switch (type) {
+            case "copy" -> new CopyStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
             case "papermc-hangar" -> new PaperMCHangarStep(config);
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
