@@ -7,6 +7,7 @@ import java.util.List;
 import com.google.common.hash.Hashing;
 import diruptio.util.config.ConfigSection;
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
+import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
 public class TemplateBuilder {
@@ -18,6 +19,7 @@ public class TemplateBuilder {
 
         return switch (type) {
             case "papermc-fill" -> new PaperMCFillStep(config);
+            case "papermc-hangar" -> new PaperMCHangarStep(config);
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
         };
     }
@@ -27,8 +29,10 @@ public class TemplateBuilder {
         Path templateDir = VerticallySpinningFish.cacheDir("templates/" + hash);
         for (TemplateStep step : template) {
             hash = Hashing.sha256().hashString(hash + step.hash(), StandardCharsets.UTF_8).toString();
-            if (!Files.exists(Path.of("cache", "templates", hash))) {
-                templateDir = VerticallySpinningFish.cacheDir("templates/" + hash);
+            Path newTemplateDir = Path.of("cache", "templates", hash);
+            if (!Files.exists(newTemplateDir)) {
+                FileUtils.copyDirectory(templateDir.toFile(), newTemplateDir.toFile());
+                templateDir = newTemplateDir;
                 step.apply(templateDir);
             }
         }

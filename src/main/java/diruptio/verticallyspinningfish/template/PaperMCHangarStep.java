@@ -2,7 +2,7 @@ package diruptio.verticallyspinningfish.template;
 
 import com.google.common.hash.Hashing;
 import diruptio.util.config.ConfigSection;
-import diruptio.verticallyspinningfish.util.PaperMCFillApi;
+import diruptio.verticallyspinningfish.util.PaperMCHangarApi;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,32 +11,37 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
-public class PaperMCFillStep implements TemplateStep {
-    private static final PaperMCFillApi fillApi = new PaperMCFillApi();
+public class PaperMCHangarStep implements TemplateStep {
+    private static final PaperMCHangarApi hangarApi = new PaperMCHangarApi();
     private final String project;
+    private final String platform;
     private final String version;
-    private final String build;
+    private final String channel;
     private final String file;
     private String effectiveVersion;
-    private int effectiveBuild;
     private String hash;
 
-    public PaperMCFillStep(@NotNull ConfigSection config) {
+    public PaperMCHangarStep(@NotNull ConfigSection config) {
         if (!config.contains("project")) {
             throw new IllegalArgumentException("Parameter \"project\" is missing");
         }
         project = config.get("project").toString();
 
+        if (!config.contains("platform")) {
+            throw new IllegalArgumentException("Parameter \"platform\" is missing");
+        }
+        platform = config.get("platform").toString();
+
         if (config.contains("version")) {
             version = config.get("version").toString();
-            if (config.contains("build")) {
-                build = config.get("build").toString();
-            } else {
-                build = "latest";
-            }
         } else {
             version = "latest";
-            build = "latest";
+        }
+
+        if (config.contains("channel")) {
+            channel = config.get("channel").toString();
+        } else {
+            channel = "release";
         }
 
         if (!config.contains("file")) {
@@ -50,20 +55,10 @@ public class PaperMCFillStep implements TemplateStep {
     @Override
     public void update() {
         if (version.equalsIgnoreCase("latest")) {
-            effectiveVersion = fillApi.getLatestVersion(project);
+            effectiveVersion = hangarApi.getLatestVersion(project, platform, channel);
         }
 
-        if (build.equalsIgnoreCase("latest")) {
-            effectiveBuild = fillApi.getLatestBuild(project, effectiveVersion);
-        } else {
-            try {
-                effectiveBuild = Integer.parseInt(build);
-            } catch (NumberFormatException ignored) {
-                throw new IllegalArgumentException("Parameter \"build\" must be an integer");
-            }
-        }
-
-        hash = "papermc-fill:" + project + ":" + effectiveVersion + ":" + effectiveBuild + ":" + file;
+        hash = "papermc-hangar:" + project + ":" + platform + ":" + effectiveVersion + ":" + file;
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }
 
@@ -76,14 +71,14 @@ public class PaperMCFillStep implements TemplateStep {
     public void apply(@NotNull Path directory) throws IOException {
         Path downloadCacheDir = Path.of(
                 "cache",
-                "papermc-fill",
+                "papermc-hangar",
                 "downloads",
                 project,
-                effectiveVersion,
-                String.valueOf(effectiveBuild));
+                platform,
+                effectiveVersion);
         if (!Files.exists(downloadCacheDir)) {
             Files.createDirectories(downloadCacheDir);
-            fillApi.download(project, effectiveVersion, effectiveBuild, downloadCacheDir);
+            hangarApi.download(project, platform, effectiveVersion, downloadCacheDir);
         }
 
         try (Stream<Path> files = Files.list(downloadCacheDir)) {
