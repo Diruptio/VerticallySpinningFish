@@ -5,6 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -34,9 +37,23 @@ public class PaperMCFillApi {
         }
     }
 
-    public @NotNull String getDownloadUrl(@NotNull String project, @NotNull String version) {
+    public int getLatestBuild(@NotNull String project, @NotNull String version) {
         Request request = new Request.Builder()
                 .url(BASE_URL + "/v3/projects/" + project + "/versions/" + version + "/builds/latest")
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            JsonObject buildJson = JsonParser.parseString(response.body().string()).getAsJsonObject();
+            return buildJson.get("id").getAsInt();
+        } catch (IOException | JsonParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void download(@NotNull String project, @NotNull String version, int build, @NotNull Path directory) {
+        String name;
+        String url;
+        Request request = new Request.Builder()
+                .url(BASE_URL + "/v3/projects/" + project + "/versions/" + version + "/builds/" + build)
                 .build();
         try (Response response = client.newCall(request).execute()) {
             JsonObject buildJson = JsonParser.parseString(response.body().string()).getAsJsonObject();
@@ -45,8 +62,18 @@ public class PaperMCFillApi {
                 throw new RuntimeException("No downloads found for project: " + project + ", version: " + version);
             }
             JsonObject downloadJson = downloadsJson.getAsJsonObject(downloadsJson.keySet().iterator().next());
-            return downloadJson.get("url").getAsString();
+            name = downloadJson.get("name").getAsString();
+            url = downloadJson.get("url").getAsString();
         } catch (IOException | JsonParseException e) {
+            throw new RuntimeException(e);
+        }
+
+        request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            OutputStream out = Files.newOutputStream(directory.resolve(name));
+            response.body().byteStream().transferTo(out);
+            out.close();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
