@@ -1,6 +1,7 @@
 package diruptio.verticallyspinningfish;
 
 import com.google.gson.Gson;
+import diruptio.verticallyspinningfish.api.*;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.WebSocket;
+import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +40,7 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            groups = Collections.unmodifiableList(gson.fromJson(response.body().string(), GroupsResponse.class).groups);
+            groups = Collections.unmodifiableList(gson.fromJson(response.body().string(), GroupsResponse.class).groups());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -49,7 +51,7 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            containers = Collections.unmodifiableList(gson.fromJson(response.body().string(), ContainersResponse.class).containers);
+            containers = Collections.unmodifiableList(gson.fromJson(response.body().string(), ContainersResponse.class).containers());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -59,6 +61,22 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         liveUpdatesWebSocket = httpClient.newWebSocket(request, new LiveUpdatesWebSocketListener(this));
+    }
+
+    public @Nullable Container createContainer(@NotNull String group) {
+        Request request = new Request.Builder()
+                .post(RequestBody.create(gson.toJson(new ContainerCreateRequest(group)).getBytes()))
+                .url(baseUrl + "/container")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                return gson.fromJson(response.body().string(), ContainerCreateResponse.class).container();
+            }
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
+        return null;
     }
 
     public void close() {
@@ -72,7 +90,7 @@ public class VerticallySpinningFishApi {
 
     public @Nullable Group getGroupByContainer(@NotNull String containerName) {
         for (Group group : groups) {
-            if (containerName.startsWith("vsf-" + group.getName())) {
+            if (containerName.startsWith("vsf-" + group.name())) {
                 return group;
             }
         }
@@ -96,8 +114,4 @@ public class VerticallySpinningFishApi {
         String secret = System.getenv("VSF_SECRET");
         return new VerticallySpinningFishApi(baseUrl, secret);
     }
-
-    private record GroupsResponse(List<Group> groups) {}
-
-    private record ContainersResponse(List<Container> containers) {}
 }

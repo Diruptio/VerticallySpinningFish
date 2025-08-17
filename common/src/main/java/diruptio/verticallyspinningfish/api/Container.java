@@ -1,4 +1,4 @@
-package diruptio.verticallyspinningfish;
+package diruptio.verticallyspinningfish.api;
 
 import java.util.List;
 import org.jetbrains.annotations.NotNull;

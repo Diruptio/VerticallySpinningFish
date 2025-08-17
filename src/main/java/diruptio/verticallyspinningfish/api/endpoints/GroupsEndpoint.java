@@ -1,11 +1,11 @@
 package diruptio.verticallyspinningfish.api.endpoints;
 
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
+import diruptio.verticallyspinningfish.api.Group;
+import diruptio.verticallyspinningfish.api.GroupsResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.openapi.*;
-import java.util.List;
-import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 
 public class GroupsEndpoint implements Handler {
@@ -30,8 +30,4 @@ public class GroupsEndpoint implements Handler {
                         group.getTags()))
                 .toList()));
     }
-
-    private record Group(String name, int minCount, int minString, boolean deleteOnStop, Set<String> tags) {}
-
-    private record GroupsResponse(List<Group> groups) {}
 }

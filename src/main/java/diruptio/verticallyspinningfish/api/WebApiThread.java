@@ -1,12 +1,14 @@
 package diruptio.verticallyspinningfish.api;
 
 import diruptio.verticallyspinningfish.api.endpoints.ContainersEndpoint;
+import diruptio.verticallyspinningfish.api.endpoints.ContainerCreateEndpoint;
 import diruptio.verticallyspinningfish.api.endpoints.GroupsEndpoint;
 import diruptio.verticallyspinningfish.api.endpoints.LiveUpdatesWebSocket;
 import io.javalin.Javalin;
 import io.javalin.openapi.plugin.OpenApiPlugin;
 import io.javalin.openapi.plugin.swagger.SwaggerPlugin;
 import io.javalin.plugin.bundled.CorsPluginConfig;
+import io.javalin.validation.ValidationException;
 import java.util.Map;
 import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
@@ -49,6 +51,8 @@ public class WebApiThread implements Runnable {
             config.router.apiBuilder(() -> {
                 before("containers", new AuthenticationHandler(secret));
                 get("containers", new ContainersEndpoint());
+                before("containers/create/{groupName}", new AuthenticationHandler(secret));
+                post("containers/create/{groupName}", new ContainerCreateEndpoint());
                 before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
                 before("live-updates", new AuthenticationHandler(secret));
@@ -60,6 +64,10 @@ public class WebApiThread implements Runnable {
                     }
                 });
             });
+        });
+        javalin.exception(ValidationException.class, (e, ctx) -> {
+            ctx.status(400);
+            ctx.json(Map.of("error", e.getMessage(), "errors", e.getErrors()));
         });
         Runtime.getRuntime().addShutdownHook(new Thread(javalin::stop));
         javalin.start(7000);

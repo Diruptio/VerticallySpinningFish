@@ -38,6 +38,7 @@ public class VerticallySpinningFish {
                 .build();
         dockerClient = DockerClientBuilder.getInstance(dockerConfig).build();
 
+        // Get information about the current container
         String currentContainerId = Objects.requireNonNull(System.getenv("HOSTNAME"));
         HostConfig currentHostConfig = dockerClient.inspectContainerCmd(currentContainerId)
                 .exec()
@@ -53,6 +54,7 @@ public class VerticallySpinningFish {
             }
         }
 
+        // Load groups
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         try (Stream<Path> groupFiles = Files.list(Path.of("groups"))) {
             groupFiles.forEach(path -> {
@@ -83,6 +85,7 @@ public class VerticallySpinningFish {
             }
         }));
 
+        // Main loop
         try {
             while (true) {
                 List<Container> allContainers = dockerClient.listContainersCmd()
@@ -123,16 +126,30 @@ public class VerticallySpinningFish {
         }
     }
 
-    public static @NotNull String createContainer(@NotNull List<Container> containers,
+    public static @NotNull diruptio.verticallyspinningfish.api.Container createContainer(@NotNull Group group) throws IOException, InterruptedException {
+        List<com.github.dockerjava.api.model.Container> containers = dockerClient.listContainersCmd()
+                .withShowAll(true)
+                .exec()
+                .stream()
+                .filter(c ->
+                        Stream.of(c.getNames()).anyMatch(name ->
+                                name.startsWith("/vsf-" + group.getName() + "-")))
+                .toList();
+        return createContainer(containers, group);
+    }
+
+    public static @NotNull diruptio.verticallyspinningfish.api.Container createContainer(@NotNull List<com.github.dockerjava.api.model.Container> containers,
                                                   @NotNull Group group) throws IOException, InterruptedException {
         String containerName = ContainerUtil.findContainerName(containers, group.getName());
         System.out.println("Creating container: " + containerName);
 
         List<PortBinding> portBindings = new ArrayList<>();
+        List<Integer> ports = new ArrayList<>();
         int minPort = group.getMinPort();
         for (int port : group.getPorts()) {
             int exposedPort = ContainerUtil.findPort(containers, minPort);
             minPort = exposedPort + 1;
+            ports.add(exposedPort);
             portBindings.add(new PortBinding(Ports.Binding.bindPort(exposedPort), new ExposedPort(port)));
         }
 
@@ -164,7 +181,7 @@ public class VerticallySpinningFish {
         System.out.println("Starting container: " + containerName);
         dockerClient.startContainerCmd(containerId).exec();
 
-        return containerId;
+        return new diruptio.verticallyspinningfish.api.Container(containerId, containerName, ports);
     }
 
     public static void deleteContainer(@NotNull String name, @NotNull String containerId) {
