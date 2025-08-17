@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.2.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
@@ -17,9 +17,15 @@ repositories {
 
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2")
+    implementation(project(":common"))
     implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.5.3")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
+    implementation("org.slf4j:slf4j-simple:2.0.16")
+    implementation("io.javalin:javalin:6.7.0")
+    implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0")
+    implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0")
+    annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:6.7.0")
     runtimeOnly("javax.activation:activation:1.1.1")
 }
 
@@ -51,6 +57,7 @@ tasks {
             "--volume", "${projectDir}/run:/data",
             "--volume", "${jar.get().outputs.files.asPath}:/root/VerticallySpinningFish.jar",
             "--volume", "/var/run/docker.sock:/var/run/docker.sock",
+            "--publish", "7000:7000",
             "--workdir", "/data",
             "--interactive",
             "openjdk:25",

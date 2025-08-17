@@ -17,12 +17,12 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public final class ContainerGroup {
+public class Group {
     private final String name;
     private final int minCount;
-    private final Integer memory;
     private final int minPort;
     private final boolean deleteOnStop;
+    private final Set<String> tags;
     private final List<TemplateStep> template;
     private String dockerfileHash = null;
     private Set<Integer> ports = Set.of();
@@ -30,29 +30,29 @@ public final class ContainerGroup {
     private String imageId = null;
     private Path templateDir = null;
 
-    private ContainerGroup(@NotNull String name,
-                           int minCount,
-                           @Nullable Integer memory,
-                           int minPort,
-                           boolean deleteOnStop,
-                           @NotNull List<TemplateStep> template) {
+    private Group(@NotNull String name,
+                  int minCount,
+                  int minPort,
+                  boolean deleteOnStop,
+                  @NotNull Set<String> tags,
+                  @NotNull List<TemplateStep> template) {
         this.name = name;
         this.minCount = minCount;
-        this.memory = memory;
         this.minPort = minPort;
         this.deleteOnStop = deleteOnStop;
+        this.tags = Collections.unmodifiableSet(tags);
         this.template = Collections.unmodifiableList(template);
     }
 
     /**
-     * Read a {@link ContainerGroup} from a YAML file
+     * Read a {@link Group} from a YAML file
      *
      * @param path The path of the YAML file
-     * @return A {@link ContainerGroup}
+     * @return A {@link Group}
      * @throws IllegalArgumentException If the Dockerfile is not found
      */
     @SuppressWarnings("unchecked")
-    public static @NotNull ContainerGroup read(@NotNull Path path) {
+    public static @NotNull Group read(@NotNull Path path) {
         String name = path.getFileName().toString().replaceAll("\\.yml$", "");
 
         Path dockerfilePath = path.resolveSibling(name + ".Dockerfile");
@@ -63,9 +63,9 @@ public final class ContainerGroup {
         Config config = new Config(path, Config.Type.YAML);
 
         int minCount = config.getInt("min-count", 0);
-        Integer memory = config.contains("memory") ? config.getInt("memory") : null;
         int minPort = config.getInt("min-port", 5000);
         boolean deleteOnStop = config.getBoolean("delete-on-stop", true);
+        Set<String> tags = new HashSet<>(config.getList("tags", List.of()));
 
         List<TemplateStep> template = new ArrayList<>();
         if (config.contains("template") && config.get("template") instanceof List<?> list) {
@@ -80,7 +80,7 @@ public final class ContainerGroup {
             }
         }
 
-        return new ContainerGroup(name, minCount, memory, minPort, deleteOnStop, template);
+        return new Group(name, minCount, minPort, deleteOnStop, tags, template);
     }
 
     public void rebuildImageIfNeeded() {
@@ -112,7 +112,7 @@ public final class ContainerGroup {
             if (dockerfileHash == null || !dockerfileHash.equals(hash)) {
                 dockerfileHash = hash;
                 System.out.println("Building image for group: " + name);
-                Path preparedPath = Path.of("tmp").resolve("dockerfiles").resolve(hash);
+                Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
                 Files.createDirectories(preparedPath.getParent());
                 Files.writeString(preparedPath, content);
                 imageId = VerticallySpinningFish.getDockerClient()
@@ -139,16 +139,16 @@ public final class ContainerGroup {
         return minCount;
     }
 
-    public @Nullable Integer getMemory() {
-        return memory;
-    }
-
     public int getMinPort() {
         return minPort;
     }
 
     public boolean isDeleteOnStop() {
         return deleteOnStop;
+    }
+
+    public @NotNull Set<String> getTags() {
+        return tags;
     }
 
     public @NotNull String getDockerfileHash() {

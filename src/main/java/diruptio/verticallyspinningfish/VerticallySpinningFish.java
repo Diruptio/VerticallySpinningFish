@@ -5,25 +5,33 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.DockerClientConfig;
+import com.google.common.hash.Hashing;
 import diruptio.util.config.Config;
 import diruptio.verticallyspinningfish.template.TemplateBuilder;
 import diruptio.verticallyspinningfish.util.ContainerUtil;
+import diruptio.verticallyspinningfish.api.WebApiThread;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
 public class VerticallySpinningFish {
+    private static String secret;
     private static DockerClient dockerClient;
-    private static final Map<String, ContainerGroup> containerGroups = new ConcurrentHashMap<>();
+    private static final Map<String, Group> containerGroups = new ConcurrentHashMap<>();
     private static String hostWorkingDir;
+    private static Integer exposedApiPort;
 
     public static void main(String[] args) throws IOException {
         Config config = new Config(Path.of("config.yml"), Config.Type.YAML);
         config.setDefault("docker-host", "unix:///var/run/docker.sock");
+        config.setDefault("secret", Hashing.sha256().hashLong(System.currentTimeMillis()).toString());
+        secret = config.get("secret").toString();
 
         DockerClientConfig dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(Objects.requireNonNull(config.getString("docker-host")))
@@ -31,31 +39,41 @@ public class VerticallySpinningFish {
         dockerClient = DockerClientBuilder.getInstance(dockerConfig).build();
 
         String currentContainerId = Objects.requireNonNull(System.getenv("HOSTNAME"));
-        for (Bind bind : dockerClient.inspectContainerCmd(currentContainerId)
+        HostConfig currentHostConfig = dockerClient.inspectContainerCmd(currentContainerId)
                 .exec()
-                .getHostConfig()
-                .getBinds()) {
+                .getHostConfig();
+        for (ExposedPort exposedPort : currentHostConfig.getPortBindings().getBindings().keySet()) {
+            if (exposedPort.getPort() == 7000) {
+                exposedApiPort = Integer.parseInt(currentHostConfig.getPortBindings().getBindings().get(exposedPort)[0].getHostPortSpec());
+            }
+        }
+        for (Bind bind : currentHostConfig.getBinds()) {
             if (bind.getVolume().getPath().equals(Path.of("").toAbsolutePath().toString())) {
                 hostWorkingDir = bind.getPath();
-                System.out.println("Host working directory: " + hostWorkingDir);
             }
         }
 
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         try (Stream<Path> groupFiles = Files.list(Path.of("groups"))) {
             groupFiles.forEach(path -> {
                 if (Files.isRegularFile(path) && path.getFileName().toString().matches("[a-zA-Z0-9_-]+\\.yml")) {
-                    ContainerGroup group = ContainerGroup.read(path);
+                    Group group = Group.read(path);
+                    System.out.println("Loading container group: " + group.getName());
                     containerGroups.put(group.getName(), group);
-                    System.out.println("Loaded container group: " + group.getName());
-                    try {
-                        group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
-                    } catch (Exception e) {
-                        new Exception("Failed to build template for group: " + group.getName(), e).printStackTrace(System.err);
-                    }
-                    group.rebuildImageIfNeeded();
+                    executor.submit(() -> {
+                        try {
+                            group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
+                        } catch (Exception e) {
+                            new Exception("Failed to build template for group: " + group.getName(), e).printStackTrace(System.err);
+                        }
+                    });
+                    executor.submit(group::rebuildImageIfNeeded);
                 }
             });
         }
+        executor.close();
+
+        Thread.startVirtualThread(new WebApiThread(secret));
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
@@ -70,7 +88,7 @@ public class VerticallySpinningFish {
                 List<Container> allContainers = dockerClient.listContainersCmd()
                         .withShowAll(true)
                         .exec();
-                for (ContainerGroup group : containerGroups.values()) {
+                for (Group group : containerGroups.values()) {
                     List<Container> containers = allContainers.stream()
                             .filter(c ->
                                     Stream.of(c.getNames()).anyMatch(name ->
@@ -89,7 +107,7 @@ public class VerticallySpinningFish {
 
                     for (Container container : containers) {
                         if (container.getState().equals("exited")) {
-                            System.out.println("Starting container: " + container.getNames()[0]);
+                            System.out.println("Starting container: " + container.getNames()[0].substring(1));
                             dockerClient.startContainerCmd(container.getId()).exec();
                         }
                     }
@@ -106,7 +124,7 @@ public class VerticallySpinningFish {
     }
 
     public static @NotNull String createContainer(@NotNull List<Container> containers,
-                                                  @NotNull ContainerGroup group) throws IOException, InterruptedException {
+                                                  @NotNull Group group) throws IOException, InterruptedException {
         String containerName = ContainerUtil.findContainerName(containers, group.getName());
         System.out.println("Creating container: " + containerName);
 
@@ -138,6 +156,8 @@ public class VerticallySpinningFish {
                 .withHostConfig(HostConfig.newHostConfig()
                         .withPortBindings(portBindings)
                         .withBinds(binds))
+                .withEnv("VSF_API_PORT=" + exposedApiPort, "VSF_SECRET=" + secret)
+                .withTty(true)
                 .exec()
                 .getId();
 
@@ -163,7 +183,7 @@ public class VerticallySpinningFish {
         return dockerClient;
     }
 
-    public static @NotNull Map<String, ContainerGroup> getContainerGroups() {
+    public static @NotNull Map<String, Group> getContainerGroups() {
         return containerGroups;
     }
 }
