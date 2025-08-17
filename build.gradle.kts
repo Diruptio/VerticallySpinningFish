@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories {
     mavenCentral()
@@ -29,8 +29,18 @@ dependencies {
     runtimeOnly("javax.activation:activation:1.1.1")
 }
 
+val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
+    val velocityPluginTask = project(":velocity-plugin").tasks.jar.get()
+    dependsOn(velocityPluginTask)
+    doFirst { delete(layout.buildDirectory.dir("generated/sources/resources").get()) }
+    from(velocityPluginTask.outputs)
+    into(layout.buildDirectory.dir("generated/sources/resources"))
+}
+sourceSets.main.get().resources.srcDir(addSubprojectJars.map { it.outputs })
+
 tasks {
     compileJava {
+        dependsOn(addSubprojectJars)
         options.encoding = "UTF-8"
         options.release = 21
     }

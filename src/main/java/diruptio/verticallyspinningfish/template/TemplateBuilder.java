@@ -20,6 +20,7 @@ public class TemplateBuilder {
             case "copy" -> new CopyStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
             case "papermc-hangar" -> new PaperMCHangarStep(config);
+            case "velocity-plugin" -> new VelocityPluginStep();
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
         };
     }
@@ -37,7 +38,7 @@ public class TemplateBuilder {
 
             if (!Files.exists(newTemplateDir)) {
                 FileUtils.copyDirectory(templateDir.toFile(), newTemplateDir.toFile());
-                step.apply(templateDir);
+                step.apply(newTemplateDir);
             }
 
             templateDir = newTemplateDir;

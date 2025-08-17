@@ -34,6 +34,7 @@ public class CopyStep implements TemplateStep {
             hash = "copy:" + from + ":" + into + ":" + Files.getLastModifiedTime(Path.of(from)).toMillis();
         } catch (IOException e) {
             e.printStackTrace(System.err);
+            return;
         }
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }

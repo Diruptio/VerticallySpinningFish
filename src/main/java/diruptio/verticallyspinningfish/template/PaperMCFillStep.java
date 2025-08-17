@@ -51,6 +51,8 @@ public class PaperMCFillStep implements TemplateStep {
     public void update() {
         if (version.equalsIgnoreCase("latest")) {
             effectiveVersion = fillApi.getLatestVersion(project);
+        } else {
+            effectiveVersion = version;
         }
 
         if (build.equalsIgnoreCase("latest")) {
