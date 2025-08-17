@@ -23,7 +23,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
     implementation("org.slf4j:slf4j-simple:2.0.16")
     implementation("io.javalin:javalin:6.7.0")
-    implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0")
+    implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0-1")
     implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0")
     annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:6.7.0")
     runtimeOnly("javax.activation:activation:1.1.1")
