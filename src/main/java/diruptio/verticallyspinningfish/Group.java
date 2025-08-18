@@ -122,7 +122,7 @@ public class Group {
                         .start()
                         .awaitImageId();
                 VerticallySpinningFish.getDockerClient()
-                        .tagImageCmd(imageId, "vsf-group/" + name, hash)
+                        .tagImageCmd(imageId, VerticallySpinningFish.getContainerPrefix() + "group/" + name, hash)
                         .withForce()
                         .exec();
             }

@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 public class VerticallySpinningFishApi {
     private static final OkHttpClient httpClient = new OkHttpClient.Builder().build();
     private static final Gson gson = new Gson();
+    private final String containerPrefix;
     private final String baseUrl;
     private final String secret;
     boolean closed = false;
@@ -27,7 +28,8 @@ public class VerticallySpinningFishApi {
     private final List<Consumer<Container>> containerAddListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Container>> containerRemoveListeners = new CopyOnWriteArrayList<>();
 
-    public VerticallySpinningFishApi(@NotNull String baseUrl, @NotNull String secret) {
+    public VerticallySpinningFishApi(@NotNull String containerPrefix, @NotNull String baseUrl, @NotNull String secret) {
+        this.containerPrefix = containerPrefix;
         this.baseUrl = baseUrl;
         this.secret = secret;
         connect();
@@ -84,13 +86,17 @@ public class VerticallySpinningFishApi {
         liveUpdatesWebSocket.close(1000, "Disconnect");
     }
 
+    public @NotNull String getContainerPrefix() {
+        return containerPrefix;
+    }
+
     public @NotNull List<Group> getGroups() {
         return groups;
     }
 
     public @Nullable Group getGroupByContainer(@NotNull String containerName) {
         for (Group group : groups) {
-            if (containerName.startsWith("vsf-" + group.name())) {
+            if (containerName.startsWith(containerPrefix + group.name())) {
                 return group;
             }
         }
@@ -110,8 +116,9 @@ public class VerticallySpinningFishApi {
     }
 
     public static @NotNull VerticallySpinningFishApi fromCurrentContainer() {
+        String containerPrefix = System.getenv("VSF_PREFIX");
         String baseUrl = "http://host.docker.internal:" + System.getenv("VSF_API_PORT");
         String secret = System.getenv("VSF_SECRET");
-        return new VerticallySpinningFishApi(baseUrl, secret);
+        return new VerticallySpinningFishApi(containerPrefix, baseUrl, secret);
     }
 }

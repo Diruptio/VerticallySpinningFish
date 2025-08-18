@@ -8,8 +8,8 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
-import diruptio.verticallyspinningfish.Container;
-import diruptio.verticallyspinningfish.Group;
+import diruptio.verticallyspinningfish.api.Container;
+import diruptio.verticallyspinningfish.api.Group;
 import diruptio.verticallyspinningfish.VerticallySpinningFishApi;
 import java.net.InetSocketAddress;
 import java.util.Optional;
@@ -44,11 +44,11 @@ public class VSFVelocityPlugin {
             }
 
             Group group = api.getGroupByContainer(container.name());
-            if (group == null || !group.getTags().contains("register-velocity")) {
+            if (group == null || !group.tags().contains("register-velocity")) {
                 continue;
             }
 
-            String name = container.name().replace("vsf-", "");
+            String name = container.name().replace(api.getContainerPrefix(), "");
             InetSocketAddress serverAddress = new InetSocketAddress("host.docker.internal", container.ports().getFirst());
             Optional<RegisteredServer> server = this.server.getServer(name);
             if (server.isPresent()) {
@@ -61,7 +61,7 @@ public class VSFVelocityPlugin {
 
             logger.info("Registering container {} as server {}", container.name(), name);
             this.server.registerServer(new ServerInfo(name, serverAddress));
-            if (group.getTags().contains("velocity-fallback")) {
+            if (group.tags().contains("velocity-fallback")) {
                 this.server.getConfiguration().getAttemptConnectionOrder().add(name);
             }
         }
@@ -73,11 +73,11 @@ public class VSFVelocityPlugin {
         }
 
         Group group = api.getGroupByContainer(container.name());
-        if (group == null || !group.getTags().contains("register-velocity")) {
+        if (group == null || !group.tags().contains("register-velocity")) {
             return;
         }
 
-        String name = container.name().replace("vsf-", "");
+        String name = container.name().replace(api.getContainerPrefix(), "");
         InetSocketAddress serverAddress = new InetSocketAddress("host.docker.internal", container.ports().getFirst());
         Optional<RegisteredServer> server = this.server.getServer(name);
         if (server.isPresent()) {
@@ -90,13 +90,13 @@ public class VSFVelocityPlugin {
 
         logger.info("Registering container {} as server {}", container.name(), name);
         this.server.registerServer(new ServerInfo(name, serverAddress));
-        if (group.getTags().contains("velocity-fallback")) {
+        if (group.tags().contains("velocity-fallback")) {
             this.server.getConfiguration().getAttemptConnectionOrder().add(name);
         }
     }
 
     private void onContainerRemove(@NotNull Container container) {
-        String name = container.name().replace("vsf-", "");
+        String name = container.name().replace(api.getContainerPrefix(), "");
         logger.info("Unregistering server {}", name);
         server.getServer(name).ifPresent(server -> this.server.unregisterServer(server.getServerInfo()));
         server.getConfiguration().getAttemptConnectionOrder().remove(name);

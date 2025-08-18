@@ -22,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class VerticallySpinningFish {
     private static String secret;
+    private static String containerPrefix;
     private static DockerClient dockerClient;
     private static final Map<String, Group> containerGroups = new ConcurrentHashMap<>();
     private static String hostWorkingDir;
@@ -31,7 +32,9 @@ public class VerticallySpinningFish {
         Config config = new Config(Path.of("config.yml"), Config.Type.YAML);
         config.setDefault("docker-host", "unix:///var/run/docker.sock");
         config.setDefault("secret", Hashing.sha256().hashLong(System.currentTimeMillis()).toString());
+        config.setDefault("container-prefix", "vsf-");
         secret = config.get("secret").toString();
+        containerPrefix = config.get("container-prefix").toString();
 
         DockerClientConfig dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(Objects.requireNonNull(config.getString("docker-host")))
@@ -95,7 +98,7 @@ public class VerticallySpinningFish {
                     List<Container> containers = allContainers.stream()
                             .filter(c ->
                                     Stream.of(c.getNames()).anyMatch(name ->
-                                            name.startsWith("/vsf-" + group.getName() + "-")))
+                                            name.startsWith("/" + containerPrefix + group.getName() + "-")))
                             .toList();
                     containers = new ArrayList<>(containers);
                     containers.removeIf(container -> {
@@ -133,7 +136,7 @@ public class VerticallySpinningFish {
                 .stream()
                 .filter(c ->
                         Stream.of(c.getNames()).anyMatch(name ->
-                                name.startsWith("/vsf-" + group.getName() + "-")))
+                                name.startsWith("/" + containerPrefix + group.getName() + "-")))
                 .toList();
         return createContainer(containers, group);
     }
@@ -173,8 +176,9 @@ public class VerticallySpinningFish {
                 .withHostConfig(HostConfig.newHostConfig()
                         .withPortBindings(portBindings)
                         .withBinds(binds))
-                .withEnv("VSF_API_PORT=" + exposedApiPort, "VSF_SECRET=" + secret)
+                .withEnv("VSF_PREFIX=" + containerPrefix, "VSF_API_PORT=" + exposedApiPort, "VSF_SECRET=" + secret)
                 .withTty(true)
+                .withStdinOpen(true)
                 .exec()
                 .getId();
 
@@ -194,6 +198,10 @@ public class VerticallySpinningFish {
         } catch (IOException e) {
             new Exception("Failed to delete container data", e).printStackTrace(System.err);
         }
+    }
+
+    public static @NotNull String getContainerPrefix() {
+        return containerPrefix;
     }
 
     public static @NotNull DockerClient getDockerClient() {

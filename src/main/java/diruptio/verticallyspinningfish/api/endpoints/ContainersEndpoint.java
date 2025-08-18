@@ -27,7 +27,8 @@ public class ContainersEndpoint implements Handler {
                 .exec()
                 .stream()
                 .filter(container ->
-                        Stream.of(container.getNames()).anyMatch(name -> name.startsWith("/vsf-")))
+                        Stream.of(container.getNames()).anyMatch(name ->
+                                name.startsWith("/" + VerticallySpinningFish.getContainerPrefix())))
                 .map(container -> new Container(
                         container.getId(),
                         String.join("", container.getNames()).substring(1),

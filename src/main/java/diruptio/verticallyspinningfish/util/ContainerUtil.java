@@ -2,6 +2,7 @@ package diruptio.verticallyspinningfish.util;
 
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ContainerPort;
+import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,7 +13,7 @@ public class ContainerUtil {
     public static @NotNull String findContainerName(@NotNull List<Container> containers, @NotNull String groupName) {
         int number = 1;
         while (true) {
-            String containerName = "vsf-" + groupName + "-" + number;
+            String containerName = VerticallySpinningFish.getContainerPrefix() + groupName + "-" + number;
             boolean nameExists = containers.stream().anyMatch(c -> Set.of(c.getNames()).contains(containerName));
             if (nameExists) {
                 number++;
