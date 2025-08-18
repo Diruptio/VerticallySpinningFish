@@ -13,9 +13,7 @@ import diruptio.verticallyspinningfish.api.WebApiThread;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
@@ -24,7 +22,7 @@ public class VerticallySpinningFish {
     private static String secret;
     private static String containerPrefix;
     private static DockerClient dockerClient;
-    private static final Map<String, Group> containerGroups = new ConcurrentHashMap<>();
+    private static final Map<String, Group> groups = new ConcurrentHashMap<>();
     private static String hostWorkingDir;
     private static Integer exposedApiPort;
 
@@ -64,7 +62,7 @@ public class VerticallySpinningFish {
                 if (Files.isRegularFile(path) && path.getFileName().toString().matches("[a-zA-Z0-9_-]+\\.yml")) {
                     Group group = Group.read(path);
                     System.out.println("Loading container group: " + group.getName());
-                    containerGroups.put(group.getName(), group);
+                    groups.put(group.getName(), group);
                     executor.submit(() -> {
                         try {
                             group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
@@ -80,8 +78,21 @@ public class VerticallySpinningFish {
 
         Thread.startVirtualThread(new WebApiThread(secret));
 
+        ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(4, Thread.ofVirtual().factory());
+        for (Group group : groups.values()) {
+            scheduledExecutor.scheduleAtFixedRate(group::rebuildImageIfNeeded, 10, 10, TimeUnit.MINUTES);
+            scheduledExecutor.scheduleAtFixedRate(() -> {
+                try {
+                    group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
+                } catch (Exception e) {
+                    new Exception("Failed to build template for group: " + group.getName(), e).printStackTrace(System.err);
+                }
+            }, 10, 10, TimeUnit.MINUTES);
+        }
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
+                scheduledExecutor.shutdownNow();
                 dockerClient.close();
             } catch (IOException e) {
                 e.printStackTrace(System.err);
@@ -94,7 +105,7 @@ public class VerticallySpinningFish {
                 List<Container> allContainers = dockerClient.listContainersCmd()
                         .withShowAll(true)
                         .exec();
-                for (Group group : containerGroups.values()) {
+                for (Group group : groups.values()) {
                     List<Container> containers = allContainers.stream()
                             .filter(c ->
                                     Stream.of(c.getNames()).anyMatch(name ->
@@ -208,7 +219,7 @@ public class VerticallySpinningFish {
         return dockerClient;
     }
 
-    public static @NotNull Map<String, Group> getContainerGroups() {
-        return containerGroups;
+    public static @NotNull Map<String, Group> getGroups() {
+        return groups;
     }
 }

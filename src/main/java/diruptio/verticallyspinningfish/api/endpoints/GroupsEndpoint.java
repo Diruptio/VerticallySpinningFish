@@ -19,7 +19,7 @@ public class GroupsEndpoint implements Handler {
                     content = @OpenApiContent(from = GroupsResponse.class)))
     @Override
     public void handle(@NotNull Context ctx) {
-        ctx.json(new GroupsResponse(VerticallySpinningFish.getContainerGroups()
+        ctx.json(new GroupsResponse(VerticallySpinningFish.getGroups()
                 .values()
                 .stream()
                 .map(group -> new Group(

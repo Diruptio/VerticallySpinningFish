@@ -10,7 +10,7 @@ import io.javalin.http.Handler;
 import io.javalin.http.InternalServerErrorResponse;
 import io.javalin.openapi.*;
 import java.io.IOException;
-import java.util.*;
+
 import org.jetbrains.annotations.NotNull;
 
 public class ContainerCreateEndpoint implements Handler {
@@ -28,7 +28,7 @@ public class ContainerCreateEndpoint implements Handler {
     @Override
     public void handle(@NotNull Context ctx) {
         ContainerCreateRequest request = ctx.bodyAsClass(ContainerCreateRequest.class);
-        Group group = VerticallySpinningFish.getContainerGroups().get(request.group());
+        Group group = VerticallySpinningFish.getGroups().get(request.group());
         if (group == null) {
             throw new BadRequestResponse("Group not found");
         }
