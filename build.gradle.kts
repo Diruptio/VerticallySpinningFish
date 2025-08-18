@@ -60,7 +60,7 @@ tasks {
     }
 
     register<Exec>("run") {
-        dependsOn("jar")
+        dependsOn(jar)
         commandLine = listOf(
             "docker", "run",
             "--rm",
@@ -75,5 +75,26 @@ tasks {
         standardOutput = System.out
         errorOutput = System.err
         standardInput = System.`in`
+    }
+
+    register<Exec>("buildDockerImage") {
+        dependsOn(jar)
+        group = "Build"
+        commandLine = listOf("docker", "build", "--tag", "diruptio/vertically-spinning-fish:${version}", ".")
+    }
+
+    register<Exec>("publishDockerImage") {
+        dependsOn("buildDockerImage")
+        doFirst {
+            val username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("docker_username") ?: "").toString()
+            val password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("docker_password") ?: "").toString()
+            commandLine(
+                "docker", "login",
+                "--username", username,
+                "--password", password,
+                "https://repo.diruptio.de/repository/docker-public")
+        }
+        group = "Publishing"
+        commandLine = listOf("docker", "push", "diruptio/vertically-spinning-fish:${version}")
     }
 }
