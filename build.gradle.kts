@@ -98,3 +98,8 @@ tasks {
         commandLine = listOf("docker", "push", "diruptio/vertically-spinning-fish:${version}")
     }
 }
+
+subprojects {
+    group = rootProject.group
+    version = rootProject.version
+}
