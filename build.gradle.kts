@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.5.0"
+version = "0.5.1"
 
 repositories {
     mavenCentral()
@@ -17,7 +17,6 @@ repositories {
 
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2")
-    implementation(project(":common"))
     implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.5.3")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
@@ -36,7 +35,12 @@ val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
     from(velocityPluginTask.outputs)
     into(layout.buildDirectory.dir("generated/sources/resources"))
 }
-sourceSets.main.get().resources.srcDir(addSubprojectJars.map { it.outputs })
+
+sourceSets.main {
+    java.srcDir(rootProject.file("common/src/main/java"))
+    resources.srcDir(rootProject.file("common/src/main/resources"))
+    resources.srcDir(addSubprojectJars.map { it.outputs })
+}
 
 tasks {
     compileJava {
