@@ -7,22 +7,26 @@ import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.google.common.hash.Hashing;
 import diruptio.util.config.Config;
+import diruptio.verticallyspinningfish.api.*;
+import diruptio.verticallyspinningfish.api.Container;
+import diruptio.verticallyspinningfish.api.endpoints.LiveUpdatesWebSocket;
 import diruptio.verticallyspinningfish.template.TemplateBuilder;
 import diruptio.verticallyspinningfish.util.ContainerUtil;
-import diruptio.verticallyspinningfish.api.WebApiThread;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
 public class VerticallySpinningFish {
+    private static DockerClient dockerClient;
     private static String secret;
     private static String containerPrefix;
-    private static DockerClient dockerClient;
     private static final Map<String, Group> groups = new ConcurrentHashMap<>();
+    private static final Map<String, Container> containerCache = new ConcurrentHashMap<>();
     private static String hostWorkingDir;
     private static Integer exposedApiPort;
 
@@ -31,13 +35,15 @@ public class VerticallySpinningFish {
         config.setDefault("docker-host", "unix:///var/run/docker.sock");
         config.setDefault("secret", Hashing.sha256().hashLong(System.currentTimeMillis()).toString());
         config.setDefault("container-prefix", "vsf-");
-        secret = config.get("secret").toString();
-        containerPrefix = config.get("container-prefix").toString();
 
+        // Docker connection
         DockerClientConfig dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(Objects.requireNonNull(config.getString("docker-host")))
                 .build();
         dockerClient = DockerClientBuilder.getInstance(dockerConfig).build();
+
+        secret = config.get("secret").toString();
+        containerPrefix = config.get("container-prefix").toString();
 
         // Get information about the current container
         String currentContainerId = Objects.requireNonNull(System.getenv("HOSTNAME"));
@@ -78,6 +84,7 @@ public class VerticallySpinningFish {
 
         Thread.startVirtualThread(new WebApiThread(secret));
 
+        // Prepare images and templates
         ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(4, Thread.ofVirtual().factory());
         for (Group group : groups.values()) {
             scheduledExecutor.scheduleAtFixedRate(group::rebuildImageIfNeeded, 10, 10, TimeUnit.MINUTES);
@@ -102,20 +109,33 @@ public class VerticallySpinningFish {
         // Main loop
         try {
             while (true) {
-                List<Container> allContainers = dockerClient.listContainersCmd()
+                List<com.github.dockerjava.api.model.Container> allDockerContainers = dockerClient.listContainersCmd()
                         .withShowAll(true)
                         .exec();
+
+                // Update cache
+                for (com.github.dockerjava.api.model.Container dockerContainer : allDockerContainers) {
+                    containerCache.compute(dockerContainer.getId(), (id, existingContainer) -> {
+                        if (existingContainer == null) {
+                            return toApiContainer(dockerContainer);
+                        }
+                        ApiBridge.setContainerStatus(existingContainer, toApiStatus(dockerContainer.getState()));
+                        return existingContainer;
+                    });
+                }
+                // Remove old containers from cache
+                containerCache.keySet().retainAll(allDockerContainers.stream().map(com.github.dockerjava.api.model.Container::getId).collect(Collectors.toSet()));
+
                 for (Group group : groups.values()) {
-                    List<Container> containers = allContainers.stream()
-                            .filter(c ->
-                                    Stream.of(c.getNames()).anyMatch(name ->
-                                            name.startsWith("/" + containerPrefix + group.getName() + "-")))
+                    List<Container> containers = containerCache.values().stream()
+                            .filter(c -> c.getName().startsWith(containerPrefix + group.getName() + "-"))
                             .toList();
+
                     containers = new ArrayList<>(containers);
                     containers.removeIf(container -> {
-                        if (container.getState().equals("dead") ||
-                                (group.isDeleteOnStop() && container.getState().equals("exited"))) {
-                            deleteContainer(container.getNames()[0].substring(1), container.getId());
+                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.UNAVAILABLE ||
+                                (group.isDeleteOnStop() && container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE)) {
+                            deleteContainer(container.getName(), container.getId());
                             return true;
                         } else {
                             return false;
@@ -123,14 +143,16 @@ public class VerticallySpinningFish {
                     });
 
                     for (Container container : containers) {
-                        if (container.getState().equals("exited")) {
-                            System.out.println("Starting container: " + container.getNames()[0].substring(1));
+                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE) {
+                            System.out.println("Starting container: " + container.getName());
                             dockerClient.startContainerCmd(container.getId()).exec();
+                            LiveUpdatesWebSocket.broadcastUpdate(new ContainerStatusUpdate(container.getId(), diruptio.verticallyspinningfish.api.Status.ONLINE));
                         }
                     }
 
                     for (int i = containers.size(); i < group.getMinCount(); i++) {
-                        createContainer(containers, group);
+                        Container newContainer = createContainer(allDockerContainers.stream().filter(c -> List.of(c.getNames()).contains("/" + containerPrefix + group.getName() + "-")).toList(), group);
+                        LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(newContainer));
                     }
                 }
                 Thread.sleep(5000);
@@ -140,7 +162,24 @@ public class VerticallySpinningFish {
         }
     }
 
-    public static @NotNull diruptio.verticallyspinningfish.api.Container createContainer(@NotNull Group group) throws IOException, InterruptedException {
+    private static Container toApiContainer(com.github.dockerjava.api.model.Container container) {
+        return new Container(
+                container.getId(),
+                String.join("", container.getNames()).substring(1),
+                Stream.of(container.getPorts()).map(com.github.dockerjava.api.model.ContainerPort::getPublicPort).filter(java.util.Objects::nonNull).toList(),
+                toApiStatus(container.getState()));
+    }
+
+    private static diruptio.verticallyspinningfish.api.Status toApiStatus(String dockerStatus) {
+        return switch (dockerStatus) {
+            case "running" -> diruptio.verticallyspinningfish.api.Status.ONLINE;
+            case "exited", "dead" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
+            case "created" -> diruptio.verticallyspinningfish.api.Status.AVAILABLE;
+            default -> diruptio.verticallyspinningfish.api.Status.UNAVAILABLE;
+        };
+    }
+
+    public static @NotNull Container createContainer(@NotNull Group group) throws IOException, InterruptedException {
         List<com.github.dockerjava.api.model.Container> containers = dockerClient.listContainersCmd()
                 .withShowAll(true)
                 .exec()
@@ -152,7 +191,7 @@ public class VerticallySpinningFish {
         return createContainer(containers, group);
     }
 
-    public static @NotNull diruptio.verticallyspinningfish.api.Container createContainer(@NotNull List<com.github.dockerjava.api.model.Container> containers,
+    public static @NotNull Container createContainer (@NotNull List<com.github.dockerjava.api.model.Container> containers,
                                                   @NotNull Group group) throws IOException, InterruptedException {
         String containerName = ContainerUtil.findContainerName(containers, group.getName());
         System.out.println("Creating container: " + containerName);
@@ -196,7 +235,9 @@ public class VerticallySpinningFish {
         System.out.println("Starting container: " + containerName);
         dockerClient.startContainerCmd(containerId).exec();
 
-        return new diruptio.verticallyspinningfish.api.Container(containerId, containerName, ports);
+        Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
+        containerCache.put(containerId, container);
+        return container;
     }
 
     public static void deleteContainer(@NotNull String name, @NotNull String containerId) {
@@ -209,6 +250,8 @@ public class VerticallySpinningFish {
         } catch (IOException e) {
             new Exception("Failed to delete container data", e).printStackTrace(System.err);
         }
+        containerCache.remove(containerId);
+        LiveUpdatesWebSocket.broadcastUpdate(new ContainerRemoveUpdate(containerId));
     }
 
     public static @NotNull String getContainerPrefix() {
@@ -221,5 +264,9 @@ public class VerticallySpinningFish {
 
     public static @NotNull Map<String, Group> getGroups() {
         return groups;
+    }
+
+    public static Map<String, Container> getContainerCache() {
+        return containerCache;
     }
 }

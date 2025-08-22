@@ -1,9 +1,6 @@
 package diruptio.verticallyspinningfish.api;
 
-import diruptio.verticallyspinningfish.api.endpoints.ContainersEndpoint;
-import diruptio.verticallyspinningfish.api.endpoints.ContainerCreateEndpoint;
-import diruptio.verticallyspinningfish.api.endpoints.GroupsEndpoint;
-import diruptio.verticallyspinningfish.api.endpoints.LiveUpdatesWebSocket;
+import diruptio.verticallyspinningfish.api.endpoints.*;
 import io.javalin.Javalin;
 import io.javalin.openapi.plugin.OpenApiPlugin;
 import io.javalin.openapi.plugin.swagger.SwaggerPlugin;
@@ -51,8 +48,10 @@ public class WebApiThread implements Runnable {
             config.router.apiBuilder(() -> {
                 before("containers", new AuthenticationHandler(secret));
                 get("containers", new ContainersEndpoint());
-                before("containers/create/{groupName}", new AuthenticationHandler(secret));
-                post("containers/create/{groupName}", new ContainerCreateEndpoint());
+                before("container", new AuthenticationHandler(secret));
+                post("container", new ContainerCreateEndpoint());
+                before("container/status", new AuthenticationHandler(secret));
+                patch("container/status", new ContainerStatusEndpoint());
                 before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
                 before("live-updates", new AuthenticationHandler(secret));

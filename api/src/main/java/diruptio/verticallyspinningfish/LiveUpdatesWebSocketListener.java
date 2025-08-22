@@ -59,7 +59,7 @@ public class LiveUpdatesWebSocketListener extends WebSocketListener {
                 ContainerRemoveUpdate update = gson.fromJson(text, ContainerRemoveUpdate.class);
                 Container container = null;
                 for (Container otherContainer : api.containers) {
-                    if (otherContainer.id().equals(update.id())) {
+                    if (otherContainer.getId().equals(update.id())) {
                         container = otherContainer;
                         break;
                     }

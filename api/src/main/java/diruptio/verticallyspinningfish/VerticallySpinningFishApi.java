@@ -65,22 +65,6 @@ public class VerticallySpinningFishApi {
         liveUpdatesWebSocket = httpClient.newWebSocket(request, new LiveUpdatesWebSocketListener(this));
     }
 
-    public @Nullable Container createContainer(@NotNull String group) {
-        Request request = new Request.Builder()
-                .post(RequestBody.create(gson.toJson(new ContainerCreateRequest(group)).getBytes()))
-                .url(baseUrl + "/container")
-                .addHeader("Authorization", secret)
-                .build();
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                return gson.fromJson(response.body().string(), ContainerCreateResponse.class).container();
-            }
-        } catch (IOException e) {
-            e.printStackTrace(System.err);
-        }
-        return null;
-    }
-
     public void close() {
         closed = true;
         liveUpdatesWebSocket.close(1000, "Disconnect");
@@ -105,6 +89,35 @@ public class VerticallySpinningFishApi {
 
     public @NotNull List<Container> getContainers() {
         return containers;
+    }
+
+    public @Nullable Container createContainer(@NotNull String group) {
+        Request request = new Request.Builder()
+                .post(RequestBody.create(gson.toJson(new ContainerCreateRequest(group)).getBytes()))
+                .url(baseUrl + "/container")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                return gson.fromJson(response.body().string(), ContainerCreateResponse.class).container();
+            }
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
+        return null;
+    }
+
+    public void setContainerStatus(@NotNull String containerId, @NotNull Status status) {
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(new ContainerStatusRequest(containerId, status)).getBytes()))
+                .url(baseUrl + "/container/status")
+                .addHeader("Authorization", secret)
+                .build();
+        try {
+            httpClient.newCall(request).execute().close();
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
     }
 
     public @NotNull List<Consumer<Container>> getContainerAddListeners() {
