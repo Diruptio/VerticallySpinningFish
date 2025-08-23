@@ -56,6 +56,8 @@ public class WebApiThread implements Runnable {
                 get("groups", new GroupsEndpoint());
                 before("live-updates", new AuthenticationHandler(secret));
                 ws("live-updates", new LiveUpdatesWebSocket());
+                before("player/connect", new AuthenticationHandler(secret));
+                post("player/connect", new PlayerConnectEndpoint());
                 after(ctx -> {
                     ctx.header("Access-Control-Allow-Origin", "*");
                     if (ctx.status().isError()) {

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import diruptio.verticallyspinningfish.api.Container;
 import diruptio.verticallyspinningfish.api.ContainerAddUpdate;
 import diruptio.verticallyspinningfish.api.ContainerRemoveUpdate;
+import diruptio.verticallyspinningfish.api.PlayerConnectUpdate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -72,6 +73,13 @@ public class LiveUpdatesWebSocketListener extends WebSocketListener {
                     for (Consumer<Container> listener : api.getContainerRemoveListeners()) {
                         listener.accept(container);
                     }
+                }
+            }
+
+            case "player_connect" -> {
+                PlayerConnectUpdate update = gson.fromJson(text, PlayerConnectUpdate.class);
+                for (Consumer<PlayerConnectUpdate> listener : api.getPlayerConnectListeners()) {
+                    listener.accept(update);
                 }
             }
         }

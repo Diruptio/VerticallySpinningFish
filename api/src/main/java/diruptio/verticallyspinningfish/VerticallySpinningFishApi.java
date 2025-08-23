@@ -5,13 +5,15 @@ import diruptio.verticallyspinningfish.api.*;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.WebSocket;
-import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +29,7 @@ public class VerticallySpinningFishApi {
     List<Container> containers;
     private final List<Consumer<Container>> containerAddListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Container>> containerRemoveListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<PlayerConnectUpdate>> playerConnectListeners = new CopyOnWriteArrayList<>();
 
     public VerticallySpinningFishApi(@NotNull String containerPrefix, @NotNull String baseUrl, @NotNull String secret) {
         this.containerPrefix = containerPrefix;
@@ -91,6 +94,19 @@ public class VerticallySpinningFishApi {
         return containers;
     }
 
+    public @NotNull String getCurrentContainerId() {
+        return Objects.requireNonNull(System.getenv("HOSTNAME"));
+    }
+
+    public @Nullable Container getContainerById(@NotNull String id) {
+        for (Container container : containers) {
+            if (container.getId().startsWith(id)) {
+                return container;
+            }
+        }
+        return null;
+    }
+
     public @Nullable Container createContainer(@NotNull String group) {
         Request request = new Request.Builder()
                 .post(RequestBody.create(gson.toJson(new ContainerCreateRequest(group)).getBytes()))
@@ -105,6 +121,19 @@ public class VerticallySpinningFishApi {
             e.printStackTrace(System.err);
         }
         return null;
+    }
+
+    public void connectPlayer(@NotNull UUID player, @NotNull String containerId) {
+        Request request = new Request.Builder()
+                .post(RequestBody.create(gson.toJson(new PlayerConnectRequest(player, containerId)).getBytes()))
+                .url(baseUrl + "/player/connect")
+                .addHeader("Authorization", secret)
+                .build();
+        try {
+            httpClient.newCall(request).execute().close();
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+        }
     }
 
     public void setContainerStatus(@NotNull String containerId, @NotNull Status status) {
@@ -126,6 +155,10 @@ public class VerticallySpinningFishApi {
 
     public @NotNull List<Consumer<Container>> getContainerRemoveListeners() {
         return containerRemoveListeners;
+    }
+
+    public @NotNull List<Consumer<PlayerConnectUpdate>> getPlayerConnectListeners() {
+        return playerConnectListeners;
     }
 
     public static @NotNull VerticallySpinningFishApi fromCurrentContainer() {
