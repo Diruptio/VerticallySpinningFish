@@ -10,7 +10,9 @@ import diruptio.util.config.Config;
 import diruptio.verticallyspinningfish.api.*;
 import diruptio.verticallyspinningfish.api.Container;
 import diruptio.verticallyspinningfish.api.endpoints.LiveUpdatesWebSocket;
+import diruptio.verticallyspinningfish.template.CopyStep;
 import diruptio.verticallyspinningfish.template.TemplateBuilder;
+import diruptio.verticallyspinningfish.template.TemplateStep;
 import diruptio.verticallyspinningfish.util.ContainerUtil;
 import java.io.IOException;
 import java.nio.file.*;
@@ -89,7 +91,19 @@ public class VerticallySpinningFish {
         for (Group group : groups.values()) {
             scheduledExecutor.scheduleAtFixedRate(group::rebuildImageIfNeeded, 10, 10, TimeUnit.MINUTES);
             scheduledExecutor.scheduleAtFixedRate(() -> {
+                for (TemplateStep step : group.getTemplate()) {
+                    if (step instanceof CopyStep) {
+                        step.update();
+                    }
+                }
+            }, 30, 30, TimeUnit.SECONDS);
+            scheduledExecutor.scheduleAtFixedRate(() -> {
                 try {
+                    for (TemplateStep step : group.getTemplate()) {
+                        if (!(step instanceof CopyStep)) {
+                            step.update();
+                        }
+                    }
                     group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
                 } catch (Exception e) {
                     new Exception("Failed to build template for group: " + group.getName(), e).printStackTrace(System.err);
