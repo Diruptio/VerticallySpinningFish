@@ -165,8 +165,7 @@ public class VerticallySpinningFish {
                     }
 
                     for (int i = containers.size(); i < group.getMinCount(); i++) {
-                        Container newContainer = createContainer(group);
-                        LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(newContainer));
+                        createContainer(group);
                     }
                 }
                 Thread.sleep(5000);
@@ -251,6 +250,9 @@ public class VerticallySpinningFish {
 
         Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
         containerCache.put(containerId, container);
+
+        LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
+
         return container;
     }
 
