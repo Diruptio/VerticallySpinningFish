@@ -81,9 +81,9 @@ tasks {
         standardInput = System.`in`
     }
 
-    register<Exec>("buildDockerImage") {
+    register<Exec>("publishDockerImage") {
         dependsOn(jar)
-        group = "Build"
+        group = "Publishing"
         doFirst {
             commandLine(
                 "docker", "build",
@@ -93,13 +93,6 @@ tasks {
                 "docker", "tag",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:latest")
-        }
-    }
-
-    register<Exec>("publishDockerImage") {
-        dependsOn("buildDockerImage")
-        group = "Publishing"
-        doFirst {
             val username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("docker_username") ?: "").toString()
             val password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("docker_password") ?: "").toString()
             commandLine(
