@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.6.0"
+version = "0.6.1"
 
 repositories {
     mavenCentral()
@@ -84,11 +84,21 @@ tasks {
     register<Exec>("buildDockerImage") {
         dependsOn(jar)
         group = "Build"
-        commandLine = listOf("docker", "build", "--tag", "diruptio/vertically-spinning-fish:${version}", ".")
+        doFirst {
+            commandLine(
+                "docker", "build",
+                "--tag", "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}",
+                ".")
+            commandLine(
+                "docker", "tag",
+                "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}",
+                "docker-public.diruptio.de/diruptio/vertically-spinning-fish:latest")
+        }
     }
 
     register<Exec>("publishDockerImage") {
         dependsOn("buildDockerImage")
+        group = "Publishing"
         doFirst {
             val username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("docker_username") ?: "").toString()
             val password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("docker_password") ?: "").toString()
@@ -96,10 +106,14 @@ tasks {
                 "docker", "login",
                 "--username", username,
                 "--password", password,
-                "https://repo.diruptio.de/repository/docker-public")
+                "docker-public.diruptio.de")
+            commandLine(
+                "docker", "push",
+                "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}")
+            commandLine(
+                "docker", "push",
+                "docker-public.diruptio.de/diruptio/vertically-spinning-fish:latest")
         }
-        group = "Publishing"
-        commandLine = listOf("docker", "push", "diruptio/vertically-spinning-fish:${version}")
     }
 }
 

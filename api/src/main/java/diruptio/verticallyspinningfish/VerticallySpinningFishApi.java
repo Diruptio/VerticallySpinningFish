@@ -163,7 +163,7 @@ public class VerticallySpinningFishApi {
 
     public static @NotNull VerticallySpinningFishApi fromCurrentContainer() {
         String containerPrefix = System.getenv("VSF_PREFIX");
-        String baseUrl = "http://host.docker.internal:" + System.getenv("VSF_API_PORT");
+        String baseUrl = "http://172.17.0.1:" + System.getenv("VSF_API_PORT");
         String secret = System.getenv("VSF_SECRET");
         return new VerticallySpinningFishApi(containerPrefix, baseUrl, secret);
     }

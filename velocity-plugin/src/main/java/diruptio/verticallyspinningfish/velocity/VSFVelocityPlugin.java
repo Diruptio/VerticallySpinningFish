@@ -52,7 +52,7 @@ public class VSFVelocityPlugin {
             }
 
             String name = container.getName().replace(api.getContainerPrefix(), "");
-            InetSocketAddress serverAddress = new InetSocketAddress("host.docker.internal", container.getPorts().getFirst());
+            InetSocketAddress serverAddress = new InetSocketAddress("172.17.0.1", container.getPorts().getFirst());
             Optional<RegisteredServer> server = this.server.getServer(name);
             if (server.isPresent()) {
                 if (server.get().getServerInfo().getAddress().equals(serverAddress)) {
@@ -81,7 +81,7 @@ public class VSFVelocityPlugin {
         }
 
         String name = container.getName().replace(api.getContainerPrefix(), "");
-        InetSocketAddress serverAddress = new InetSocketAddress("host.docker.internal", container.getPorts().getFirst());
+        InetSocketAddress serverAddress = new InetSocketAddress("172.17.0.1", container.getPorts().getFirst());
         Optional<RegisteredServer> server = this.server.getServer(name);
         if (server.isPresent()) {
             if (server.get().getServerInfo().getAddress().equals(serverAddress)) {
