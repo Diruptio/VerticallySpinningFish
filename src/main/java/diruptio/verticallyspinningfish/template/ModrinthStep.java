@@ -2,7 +2,7 @@ package diruptio.verticallyspinningfish.template;
 
 import com.google.common.hash.Hashing;
 import diruptio.util.config.ConfigSection;
-import diruptio.verticallyspinningfish.util.PaperMCHangarApi;
+import diruptio.verticallyspinningfish.util.ModrinthApi;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,8 +11,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
-public class PaperMCHangarStep implements TemplateStep {
-    private static final PaperMCHangarApi hangarApi = new PaperMCHangarApi();
+public class ModrinthStep implements TemplateStep {
+    private static final ModrinthApi modrinthApi = new ModrinthApi();
     private final String project;
     private final String platform;
     private final String version;
@@ -22,7 +22,7 @@ public class PaperMCHangarStep implements TemplateStep {
     private String effectiveVersion;
     private String hash;
 
-    public PaperMCHangarStep(@NotNull ConfigSection config) {
+    public ModrinthStep(@NotNull ConfigSection config) {
         if (!config.contains("project")) {
             throw new IllegalArgumentException("Parameter \"project\" is missing");
         }
@@ -39,7 +39,11 @@ public class PaperMCHangarStep implements TemplateStep {
             version = "latest";
         }
 
-        minecraft = config.get("minecraft").toString();
+        if (config.contains("minecraft")) {
+            minecraft = config.get("minecraft").toString();
+        } else {
+            minecraft = null;
+        }
 
         if (config.contains("channel")) {
             channel = config.get("channel").toString();
@@ -58,10 +62,12 @@ public class PaperMCHangarStep implements TemplateStep {
     @Override
     public void update() {
         if (version.equalsIgnoreCase("latest")) {
-            effectiveVersion = hangarApi.getLatestVersion(project, platform, minecraft, channel);
+            effectiveVersion = modrinthApi.getLatestVersion(project, platform, minecraft, channel);
+        } else {
+            effectiveVersion = version;
         }
 
-        hash = "papermc-hangar:" + project + ":" + platform + ":" + effectiveVersion + ":" + file;
+        hash = "modrinth:" + project + ":" + platform + ":" + effectiveVersion + ":" + file;
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }
 
@@ -74,14 +80,14 @@ public class PaperMCHangarStep implements TemplateStep {
     public void apply(@NotNull Path directory) throws IOException {
         Path downloadCacheDir = Path.of(
                 "cache",
-                "papermc-hangar",
+                "modrinth",
                 "downloads",
                 project,
                 platform,
                 effectiveVersion);
         if (!Files.exists(downloadCacheDir)) {
             Files.createDirectories(downloadCacheDir);
-            hangarApi.download(project, platform, effectiveVersion, downloadCacheDir);
+            modrinthApi.download(project, platform, effectiveVersion, downloadCacheDir);
         }
 
         try (Stream<Path> files = Files.list(downloadCacheDir)) {

@@ -18,6 +18,7 @@ public class TemplateBuilder {
 
         return switch (type) {
             case "copy" -> new CopyStep(config);
+            case "modrinth" -> new ModrinthStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
             case "papermc-hangar" -> new PaperMCHangarStep(config);
             case "velocity-plugin" -> new VelocityPluginStep();

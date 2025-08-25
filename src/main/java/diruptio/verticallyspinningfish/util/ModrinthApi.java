@@ -11,8 +11,8 @@ import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class PaperMCHangarApi {
-    public static final String BASE_URL = "https://hangar.papermc.io/api";
+public class ModrinthApi {
+    public static final String BASE_URL = "https://api.modrinth.com";
     private static final OkHttpClient client = new OkHttpClient.Builder().build();
 
     public @NotNull String getLatestVersion(@NotNull String project,
@@ -25,28 +25,26 @@ public class PaperMCHangarApi {
                 "minecraft: " + minecraft + ", " +
                 "channel: " + channel);
         Request request = new Request.Builder()
-                .url(BASE_URL + "/v1/projects/" + project + "/versions?platform=" + platform + "&channel=" + channel)
+                .url(BASE_URL + "/v2/project/" + project + "/version?loaders=[\"" + platform + "\"]")
                 .build();
         try (Response response = client.newCall(request).execute()) {
-            JsonObject json = JsonParser.parseString(response.body().string()).getAsJsonObject();
-            JsonArray resultJson = json.getAsJsonArray("result");
-            if (resultJson.isEmpty()) {
+            JsonArray json = JsonParser.parseString(response.body().string()).getAsJsonArray();
+            if (json.isEmpty()) {
                 throw noVersionsFound;
             }
 
-            for (JsonElement versionJson : resultJson) {
-                if (minecraft == null) {
-                    return versionJson.getAsJsonObject().get("name").getAsString();
-                }
-
-                JsonObject platformDependencies = versionJson.getAsJsonObject().getAsJsonObject("platformDependencies");
-                if (!platformDependencies.has(platform.toUpperCase())) {
+            for (JsonElement versionJson : json) {
+                if (!versionJson.getAsJsonObject().get("version_type").getAsString().equalsIgnoreCase(channel)) {
                     continue;
                 }
 
-                for (JsonElement platformDependency : platformDependencies.getAsJsonArray(platform.toUpperCase())) {
-                    if (platformDependency.getAsString().equalsIgnoreCase(minecraft)) {
-                        return versionJson.getAsJsonObject().get("name").getAsString();
+                if (minecraft == null) {
+                    return versionJson.getAsJsonObject().get("version_number").getAsString();
+                }
+
+                for (JsonElement gameVersion : versionJson.getAsJsonObject().getAsJsonArray("game_versions")) {
+                    if (gameVersion.getAsString().equalsIgnoreCase(minecraft)) {
+                        return versionJson.getAsJsonObject().get("version_number").getAsString();
                     }
                 }
             }
@@ -61,25 +59,28 @@ public class PaperMCHangarApi {
                          @NotNull String platform,
                          @NotNull String version,
                          @NotNull Path directory) {
-        RuntimeException noDownloadsFound = new RuntimeException("No downloads found for " +
-                "project: " + project + ", " +
-                "platform: " + platform + ", " +
-                "version: " + version);
-        String name;
-        String url;
+        String name = null;
+        String url = null;
         Request request = new Request.Builder()
-                .url(BASE_URL + "/v1/projects/" + project + "/versions/" + version)
+                .url(BASE_URL + "/v2/project/" + project + "/version/" + version)
                 .build();
         try (Response response = client.newCall(request).execute()) {
-            JsonObject versionJson = JsonParser.parseString(response.body().string()).getAsJsonObject();
-            JsonObject downloadsJson = versionJson.getAsJsonObject("downloads");
-            if (!downloadsJson.has(platform.toUpperCase())) {
-                throw noDownloadsFound;
+            JsonObject json = JsonParser.parseString(response.body().string()).getAsJsonObject();
+            JsonArray filesJson = json.getAsJsonArray("files");
+
+            for (JsonElement fileJson : filesJson) {
+                if (fileJson.getAsJsonObject().get("primary").getAsBoolean()) {
+                    name = fileJson.getAsJsonObject().get("filename").getAsString();
+                    url = fileJson.getAsJsonObject().get("url").getAsString();
+                }
             }
 
-            JsonObject downloadJson = downloadsJson.getAsJsonObject(platform.toUpperCase());
-            name = downloadJson.getAsJsonObject("fileInfo").get("name").getAsString();
-            url = downloadJson.get("downloadUrl").getAsString();
+            if (url == null) {
+                throw new RuntimeException("No downloads found for " +
+                        "project: " + project + ", " +
+                        "platform: " + platform + ", " +
+                        "version: " + version);
+            }
         } catch (IOException | JsonParseException e) {
             throw new RuntimeException(e);
         }
