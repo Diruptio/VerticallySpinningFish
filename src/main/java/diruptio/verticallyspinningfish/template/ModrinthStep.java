@@ -39,11 +39,7 @@ public class ModrinthStep implements TemplateStep {
             version = "latest";
         }
 
-        if (config.contains("minecraft")) {
-            minecraft = config.get("minecraft").toString();
-        } else {
-            minecraft = null;
-        }
+        minecraft = config.getString("minecraft");
 
         if (config.contains("channel")) {
             channel = config.get("channel").toString();

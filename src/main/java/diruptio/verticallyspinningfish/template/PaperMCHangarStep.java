@@ -39,7 +39,7 @@ public class PaperMCHangarStep implements TemplateStep {
             version = "latest";
         }
 
-        minecraft = config.get("minecraft").toString();
+        minecraft = config.getString("minecraft");
 
         if (config.contains("channel")) {
             channel = config.get("channel").toString();
