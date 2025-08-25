@@ -81,31 +81,36 @@ tasks {
         standardInput = System.`in`
     }
 
-    register<Exec>("publishDockerImage") {
+    register("publishDockerImage") {
         dependsOn(jar)
         group = "Publishing"
         doFirst {
-            commandLine(
+            ProcessBuilder(
                 "docker", "build",
                 "--tag", "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}",
                 ".")
-            commandLine(
+                .inheritIO().start().waitFor()
+            ProcessBuilder(
                 "docker", "tag",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:latest")
+                .inheritIO().start().waitFor()
             val username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("docker_username") ?: "").toString()
             val password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("docker_password") ?: "").toString()
-            commandLine(
+            ProcessBuilder(
                 "docker", "login",
                 "--username", username,
                 "--password", password,
                 "docker-public.diruptio.de")
-            commandLine(
+                .inheritIO().start().waitFor()
+            ProcessBuilder(
                 "docker", "push",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:${version}")
-            commandLine(
+                .inheritIO().start().waitFor()
+            ProcessBuilder(
                 "docker", "push",
                 "docker-public.diruptio.de/diruptio/vertically-spinning-fish:latest")
+                .inheritIO().start().waitFor()
         }
     }
 }
