@@ -116,8 +116,10 @@ public class VerticallySpinningFishApi {
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 return gson.fromJson(response.body().string(), ContainerCreateResponse.class).container();
+            } else {
+                throw new RuntimeException("Failed to create a container from group " + group + ": " + response.body().string());
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             e.printStackTrace(System.err);
         }
         return null;
@@ -129,9 +131,11 @@ public class VerticallySpinningFishApi {
                 .url(baseUrl + "/player/connect")
                 .addHeader("Authorization", secret)
                 .build();
-        try {
-            httpClient.newCall(request).execute().close();
-        } catch (IOException e) {
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("Failed to connect player " + player + " to container " + containerId + ": " + response.body().string());
+            }
+        } catch (IOException | RuntimeException e) {
             e.printStackTrace(System.err);
         }
     }
@@ -142,9 +146,11 @@ public class VerticallySpinningFishApi {
                 .url(baseUrl + "/container/status")
                 .addHeader("Authorization", secret)
                 .build();
-        try {
-            httpClient.newCall(request).execute().close();
-        } catch (IOException e) {
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("Failed to set status of container " + containerId + " to " + status + ": " + response.body().string());
+            }
+        } catch (IOException | RuntimeException e) {
             e.printStackTrace(System.err);
         }
     }
