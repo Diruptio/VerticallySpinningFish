@@ -3,8 +3,6 @@ package diruptio.verticallyspinningfish.api.endpoints;
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import diruptio.verticallyspinningfish.api.Container;
 import diruptio.verticallyspinningfish.api.ContainerStatusRequest;
-import diruptio.verticallyspinningfish.api.ContainerStatusUpdate;
-import diruptio.verticallyspinningfish.api.ApiBridge;
 import diruptio.verticallyspinningfish.api.Status;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
@@ -35,12 +33,10 @@ public class ContainerStatusEndpoint implements Handler {
         if (container.getStatus().isOffline()) {
             throw new BadRequestResponse("Cannot update status of an offline container");
         } else if (request.status() == Status.AVAILABLE || request.status() == Status.UNAVAILABLE) {
-            ApiBridge.setContainerStatus(container, request.status());
-            LiveUpdatesWebSocket.broadcastUpdate(new ContainerStatusUpdate(request.id(), request.status()));
+            VerticallySpinningFish.setContainerStatus(container, request.status());
+            ctx.status(HttpStatus.OK);
         } else {
             throw new BadRequestResponse("Invalid status. Only AVAILABLE or UNAVAILABLE are allowed.");
         }
-
-        ctx.status(HttpStatus.OK);
     }
 }

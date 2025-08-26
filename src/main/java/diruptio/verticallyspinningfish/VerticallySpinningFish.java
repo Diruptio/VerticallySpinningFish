@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
@@ -123,22 +122,31 @@ public class VerticallySpinningFish {
         // Main loop
         try {
             while (true) {
-                List<com.github.dockerjava.api.model.Container> allDockerContainers = dockerClient.listContainersCmd()
+                List<com.github.dockerjava.api.model.Container> dockerContainers = dockerClient.listContainersCmd()
                         .withShowAll(true)
-                        .exec();
+                        .exec()
+                        .stream()
+                        .filter(container ->
+                                Stream.of(container.getNames()).anyMatch(name -> name.startsWith("/" + containerPrefix)))
+                        .toList();
+                dockerContainers = new ArrayList<>(dockerContainers); // Make the list mutable
 
                 // Update cache
-                for (com.github.dockerjava.api.model.Container dockerContainer : allDockerContainers) {
+                for (com.github.dockerjava.api.model.Container dockerContainer : dockerContainers) {
                     containerCache.compute(dockerContainer.getId(), (id, existingContainer) -> {
                         if (existingContainer == null) {
-                            return toApiContainer(dockerContainer);
+                            Container container = toApiContainer(dockerContainer);
+                            LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
+                            return container;
                         }
-                        ApiBridge.setContainerStatus(existingContainer, toApiStatus(dockerContainer.getState()));
+
+                        Status newStatus = toApiStatus(dockerContainer.getStatus());
+                        if (newStatus.isOnline() != existingContainer.getStatus().isOnline()) {
+                            setContainerStatus(existingContainer, newStatus);
+                        }
                         return existingContainer;
                     });
                 }
-                // Remove old containers from cache
-                containerCache.keySet().retainAll(allDockerContainers.stream().map(com.github.dockerjava.api.model.Container::getId).collect(Collectors.toSet()));
 
                 for (Group group : groups.values()) {
                     List<Container> containers = containerCache.values().stream()
@@ -147,8 +155,10 @@ public class VerticallySpinningFish {
 
                     containers = new ArrayList<>(containers);
                     containers.removeIf(container -> {
-                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.UNAVAILABLE ||
-                                (group.isDeleteOnStop() && container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE)) {
+                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.UNAVAILABLE) {
+                            return true;
+                        } else if (group.isDeleteOnStop() &&
+                                container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE) {
                             deleteContainer(container.getName(), container.getId());
                             return true;
                         } else {
@@ -186,8 +196,7 @@ public class VerticallySpinningFish {
     private static diruptio.verticallyspinningfish.api.Status toApiStatus(String dockerStatus) {
         return switch (dockerStatus) {
             case "running" -> diruptio.verticallyspinningfish.api.Status.ONLINE;
-            case "exited", "dead" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
-            case "created" -> diruptio.verticallyspinningfish.api.Status.AVAILABLE;
+            case "created", "exited", "dead" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
             default -> diruptio.verticallyspinningfish.api.Status.UNAVAILABLE;
         };
     }
@@ -236,11 +245,11 @@ public class VerticallySpinningFish {
                 .exec()
                 .getId();
 
-        System.out.println("Starting container: " + containerName);
-        dockerClient.startContainerCmd(containerId).exec();
-
         Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
         containerCache.put(containerId, container);
+
+        System.out.println("Starting container: " + containerName);
+        dockerClient.startContainerCmd(containerId).exec();
 
         LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
 
@@ -259,6 +268,12 @@ public class VerticallySpinningFish {
         }
         containerCache.remove(containerId);
         LiveUpdatesWebSocket.broadcastUpdate(new ContainerRemoveUpdate(containerId));
+    }
+
+    public static void setContainerStatus(@NotNull Container container, @NotNull Status status) {
+        ApiBridge.setContainerStatus(container, status);
+        LiveUpdatesWebSocket.broadcastUpdate(new ContainerStatusUpdate(container.getId(), status));
+        System.out.println("Status of container " + container.getId() + " changed to " + status);
     }
 
     public static @NotNull String getContainerPrefix() {
