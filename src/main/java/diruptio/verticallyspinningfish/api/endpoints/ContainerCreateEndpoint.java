@@ -35,7 +35,7 @@ public class ContainerCreateEndpoint implements Handler {
 
         try {
             ctx.json(new ContainerCreateResponse(VerticallySpinningFish.createContainer(group)));
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             throw new InternalServerErrorResponse("Failed to create container: " + e.getMessage());
         }
     }

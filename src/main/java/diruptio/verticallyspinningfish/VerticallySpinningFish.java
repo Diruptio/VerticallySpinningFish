@@ -192,20 +192,11 @@ public class VerticallySpinningFish {
         };
     }
 
-    public static @NotNull Container createContainer(@NotNull Group group) throws IOException, InterruptedException {
+    public static @NotNull Container createContainer(@NotNull Group group) throws IOException {
         List<com.github.dockerjava.api.model.Container> containers = dockerClient.listContainersCmd()
                 .withShowAll(true)
-                .exec()
-                .stream()
-                .filter(c ->
-                        Stream.of(c.getNames()).anyMatch(name ->
-                                name.startsWith("/" + containerPrefix + group.getName() + "-")))
-                .toList();
-        return createContainer(containers, group);
-    }
+                .exec();
 
-    public static @NotNull Container createContainer(@NotNull List<com.github.dockerjava.api.model.Container> containers,
-                                                     @NotNull Group group) throws IOException {
         String containerName = ContainerUtil.findContainerName(containers, group.getName());
         System.out.println("Creating container: " + containerName);
 
