@@ -132,8 +132,10 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new RuntimeException("Failed to connect player " + player + " to container " + containerId + ": " + response.body().string());
+            if (response.isSuccessful()) {
+                System.out.println("Connected player " + player + " to container " + containerId);
+            } else {
+                System.err.println("Failed to connect player " + player + " to container " + containerId + ": " + response.body().string());
             }
         } catch (IOException | RuntimeException e) {
             e.printStackTrace(System.err);
@@ -147,8 +149,10 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new RuntimeException("Failed to set status of container " + containerId + " to " + status + ": " + response.body().string());
+            if (response.isSuccessful()) {
+                System.out.println("Status of container " + containerId + " was set to " + secret);
+            } else {
+                System.err.println("Failed to set status of container " + containerId + " to " + status + ": " + response.body().string());
             }
         } catch (IOException | RuntimeException e) {
             e.printStackTrace(System.err);
