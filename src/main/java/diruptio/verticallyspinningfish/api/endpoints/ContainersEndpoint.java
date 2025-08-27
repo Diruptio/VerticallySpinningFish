@@ -5,7 +5,6 @@ import diruptio.verticallyspinningfish.api.ContainersResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.openapi.*;
-import java.util.ArrayList;
 import org.jetbrains.annotations.NotNull;
 
 public class ContainersEndpoint implements Handler {
@@ -19,6 +18,6 @@ public class ContainersEndpoint implements Handler {
                     content = @OpenApiContent(from = ContainersResponse.class)))
     @Override
     public void handle(@NotNull Context ctx) {
-        ctx.json(new ContainersResponse(new ArrayList<>(VerticallySpinningFish.getContainerCache().values())));
+        ctx.json(new ContainersResponse(VerticallySpinningFish.getContainers()));
     }
 }

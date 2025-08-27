@@ -21,13 +21,14 @@ import java.util.concurrent.*;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class VerticallySpinningFish {
     private static DockerClient dockerClient;
     private static String secret;
     private static String containerPrefix;
     private static final Map<String, Group> groups = new ConcurrentHashMap<>();
-    private static final Map<String, Container> containerCache = new ConcurrentHashMap<>();
+    private static final List<Container> containers = new ArrayList<>();
     private static String hostWorkingDir;
     private static Integer exposedApiPort;
 
@@ -133,23 +134,21 @@ public class VerticallySpinningFish {
 
                 // Update cache
                 for (com.github.dockerjava.api.model.Container dockerContainer : dockerContainers) {
-                    containerCache.compute(dockerContainer.getId(), (id, existingContainer) -> {
-                        if (existingContainer == null) {
-                            Container container = toApiContainer(dockerContainer);
-                            LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
-                            return container;
-                        }
-
+                    Container container = getContainer(dockerContainer.getId());
+                    if (container == null) {
+                        container = toApiContainer(dockerContainer);
+                        LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
+                    } else {
                         Status newStatus = toApiStatus(dockerContainer.getStatus());
-                        if (newStatus.isOnline() != existingContainer.getStatus().isOnline()) {
-                            setContainerStatus(existingContainer, newStatus);
+                        if (newStatus.isOnline() != container.getStatus().isOnline()) {
+                            setContainerStatus(container, newStatus);
                         }
-                        return existingContainer;
-                    });
+                    }
                 }
 
                 for (Group group : groups.values()) {
-                    List<Container> containers = containerCache.values().stream()
+                    List<Container> containers = VerticallySpinningFish.containers
+                            .stream()
                             .filter(c -> c.getName().startsWith(containerPrefix + group.getName() + "-"))
                             .toList();
 
@@ -159,7 +158,7 @@ public class VerticallySpinningFish {
                             return true;
                         } else if (group.isDeleteOnStop() &&
                                 container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE) {
-                            deleteContainer(container.getName(), container.getId());
+                            deleteContainer(container.getId());
                             return true;
                         } else {
                             return false;
@@ -201,19 +200,28 @@ public class VerticallySpinningFish {
         };
     }
 
+    public static @Nullable Container getContainer(@NotNull String id) {
+        for (Container container : containers) {
+            if (container.getId().startsWith(id) || id.startsWith(container.getId())) {
+                return container;
+            }
+        }
+        return null;
+    }
+
     public static @NotNull Container createContainer(@NotNull Group group) throws IOException {
-        List<com.github.dockerjava.api.model.Container> containers = dockerClient.listContainersCmd()
+        List<com.github.dockerjava.api.model.Container> dockerContainers = dockerClient.listContainersCmd()
                 .withShowAll(true)
                 .exec();
 
-        String containerName = ContainerUtil.findContainerName(containers, group.getName());
+        String containerName = ContainerUtil.findContainerName(dockerContainers, group.getName());
         System.out.println("Creating container: " + containerName);
 
         List<PortBinding> portBindings = new ArrayList<>();
         List<Integer> ports = new ArrayList<>();
         int minPort = group.getMinPort();
         for (int port : group.getPorts()) {
-            int exposedPort = ContainerUtil.findPort(containers, minPort);
+            int exposedPort = ContainerUtil.findPort(dockerContainers, minPort);
             minPort = exposedPort + 1;
             ports.add(exposedPort);
             portBindings.add(new PortBinding(Ports.Binding.bindPort(exposedPort), new ExposedPort(port)));
@@ -246,7 +254,7 @@ public class VerticallySpinningFish {
                 .getId();
 
         Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
-        containerCache.put(containerId, container);
+        containers.add(container);
 
         System.out.println("Starting container: " + containerName);
         dockerClient.startContainerCmd(containerId).exec();
@@ -256,18 +264,23 @@ public class VerticallySpinningFish {
         return container;
     }
 
-    public static void deleteContainer(@NotNull String name, @NotNull String containerId) {
-        System.out.println("Deleting container: " + name);
-        dockerClient.removeContainerCmd(containerId)
+    public static void deleteContainer(@NotNull String id) {
+        Container container = getContainer(id);
+        if (container == null) {
+            return;
+        }
+
+        System.out.println("Deleting container: " + container.getName());
+        dockerClient.removeContainerCmd(container.getId())
                 .withForce(true)
                 .exec();
         try {
-            FileUtils.deleteDirectory(Path.of("running", name).toFile());
+            FileUtils.deleteDirectory(Path.of("running", container.getName()).toFile());
         } catch (IOException e) {
             new Exception("Failed to delete container data", e).printStackTrace(System.err);
         }
-        containerCache.remove(containerId);
-        LiveUpdatesWebSocket.broadcastUpdate(new ContainerRemoveUpdate(containerId));
+        containers.remove(container);
+        LiveUpdatesWebSocket.broadcastUpdate(new ContainerRemoveUpdate(container.getId()));
     }
 
     public static void setContainerStatus(@NotNull Container container, @NotNull Status status) {
@@ -288,7 +301,7 @@ public class VerticallySpinningFish {
         return groups;
     }
 
-    public static Map<String, Container> getContainerCache() {
-        return containerCache;
+    public static @NotNull List<Container> getContainers() {
+        return containers;
     }
 }

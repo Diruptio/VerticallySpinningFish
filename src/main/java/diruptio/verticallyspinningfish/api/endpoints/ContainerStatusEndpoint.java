@@ -25,7 +25,7 @@ public class ContainerStatusEndpoint implements Handler {
     public void handle(@NotNull Context ctx) {
         ContainerStatusRequest request = ctx.bodyAsClass(ContainerStatusRequest.class);
 
-        Container container = VerticallySpinningFish.getContainerCache().get(request.id());
+        Container container = VerticallySpinningFish.getContainer(request.id());
         if (container == null) {
             throw new BadRequestResponse("Container not found");
         }
