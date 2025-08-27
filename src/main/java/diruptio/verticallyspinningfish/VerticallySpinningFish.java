@@ -151,7 +151,7 @@ public class VerticallySpinningFish {
                         containers.add(container);
                         LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
                     } else {
-                        Status newStatus = toApiStatus(dockerContainer.getStatus());
+                        Status newStatus = toApiStatus(dockerContainer.getState());
                         if (newStatus.isOnline() != container.getStatus().isOnline()) {
                             setContainerStatus(container, newStatus);
                         }
@@ -206,9 +206,9 @@ public class VerticallySpinningFish {
 
     private static diruptio.verticallyspinningfish.api.Status toApiStatus(String dockerStatus) {
         return switch (dockerStatus) {
-            case "running" -> diruptio.verticallyspinningfish.api.Status.ONLINE;
-            case "created", "exited", "dead" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
-            default -> diruptio.verticallyspinningfish.api.Status.UNAVAILABLE;
+            case "restarting", "running" -> diruptio.verticallyspinningfish.api.Status.ONLINE;
+            case "created", "exited", "dead", "removing" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
+            default -> throw new IllegalArgumentException("Unknown docker container status: " + dockerStatus);
         };
     }
 
