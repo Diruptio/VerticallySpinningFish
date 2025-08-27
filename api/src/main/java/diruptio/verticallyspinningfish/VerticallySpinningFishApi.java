@@ -121,9 +121,9 @@ public class VerticallySpinningFishApi {
         return Objects.requireNonNull(System.getenv("HOSTNAME"));
     }
 
-    public @Nullable Container getContainerById(@NotNull String id) {
+    public @Nullable Container getContainer(@NotNull String id) {
         for (Container container : containers) {
-            if (container.getId().startsWith(id)) {
+            if (container.getId().startsWith(id) || id.startsWith(container.getId())) {
                 return container;
             }
         }

@@ -111,7 +111,7 @@ public class VSFVelocityPlugin {
             logger.warn("Could not find player with UUID {} to connect to container {}", update.player(), update.containerId());
             return;
         }
-        Container container = api.getContainerById(update.containerId());
+        Container container = api.getContainer(update.containerId());
         if (container == null) {
             logger.warn("Could not find container with id {} to connect player {} to", update.containerId(), update.player());
             return;
