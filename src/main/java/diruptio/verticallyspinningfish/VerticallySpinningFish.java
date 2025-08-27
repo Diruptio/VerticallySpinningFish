@@ -84,6 +84,18 @@ public class VerticallySpinningFish {
         }
         executor.close();
 
+        // Load containers
+        List<com.github.dockerjava.api.model.Container> dockerContainers = dockerClient.listContainersCmd()
+                .withShowAll(true)
+                .exec()
+                .stream()
+                .filter(container ->
+                        Stream.of(container.getNames()).anyMatch(name -> name.startsWith("/" + containerPrefix)))
+                .toList();
+        for (com.github.dockerjava.api.model.Container dockerContainer : dockerContainers) {
+            containers.add(toApiContainer(dockerContainer));
+        }
+
         Thread.startVirtualThread(new WebApiThread(secret));
 
         // Prepare images and templates
@@ -123,20 +135,20 @@ public class VerticallySpinningFish {
         // Main loop
         try {
             while (true) {
-                List<com.github.dockerjava.api.model.Container> dockerContainers = dockerClient.listContainersCmd()
+                dockerContainers = dockerClient.listContainersCmd()
                         .withShowAll(true)
                         .exec()
                         .stream()
                         .filter(container ->
                                 Stream.of(container.getNames()).anyMatch(name -> name.startsWith("/" + containerPrefix)))
                         .toList();
-                dockerContainers = new ArrayList<>(dockerContainers); // Make the list mutable
 
                 // Update cache
                 for (com.github.dockerjava.api.model.Container dockerContainer : dockerContainers) {
                     Container container = getContainer(dockerContainer.getId());
                     if (container == null) {
                         container = toApiContainer(dockerContainer);
+                        containers.add(container);
                         LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
                     } else {
                         Status newStatus = toApiStatus(dockerContainer.getStatus());
