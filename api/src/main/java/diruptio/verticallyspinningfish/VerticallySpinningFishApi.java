@@ -24,9 +24,10 @@ public class VerticallySpinningFishApi {
     private final String baseUrl;
     private final String secret;
     boolean closed = false;
+    Thread reconnectThread;
     WebSocket liveUpdatesWebSocket;
-    List<Group> groups;
-    List<Container> containers;
+    List<Group> groups = Collections.emptyList();
+    List<Container> containers = Collections.emptyList();
     private final List<Consumer<Container>> containerAddListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Container>> containerRemoveListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<PlayerConnectUpdate>> playerConnectListeners = new CopyOnWriteArrayList<>();
@@ -39,38 +40,60 @@ public class VerticallySpinningFishApi {
     }
 
     void connect() {
-        Request request = new Request.Builder()
-                .get()
-                .url(baseUrl + "/groups")
-                .addHeader("Authorization", secret)
-                .build();
-        try (Response response = httpClient.newCall(request).execute()) {
-            groups = Collections.unmodifiableList(gson.fromJson(response.body().string(), GroupsResponse.class).groups());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (reconnectThread != null && reconnectThread.isAlive()) {
+            return;
         }
+        reconnectThread = Thread.ofVirtual().start(() -> {
+            while (!closed) {
+                try {
+                    Request request = new Request.Builder()
+                            .get()
+                            .url(baseUrl + "/groups")
+                            .addHeader("Authorization", secret)
+                            .build();
+                    try (Response response = httpClient.newCall(request).execute()) {
+                        if (!response.isSuccessful()) throw new IOException("Failed to get groups: " + response.code());
+                        groups = Collections.unmodifiableList(gson.fromJson(response.body().string(), GroupsResponse.class).groups());
+                    }
 
-        request = new Request.Builder()
-                .get()
-                .url(baseUrl + "/containers")
-                .addHeader("Authorization", secret)
-                .build();
-        try (Response response = httpClient.newCall(request).execute()) {
-            containers = Collections.unmodifiableList(gson.fromJson(response.body().string(), ContainersResponse.class).containers());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+                    request = new Request.Builder()
+                            .get()
+                            .url(baseUrl + "/containers")
+                            .addHeader("Authorization", secret)
+                            .build();
+                    try (Response response = httpClient.newCall(request).execute()) {
+                        if (!response.isSuccessful()) throw new IOException("Failed to get containers: " + response.code());
+                        containers = Collections.unmodifiableList(gson.fromJson(response.body().string(), ContainersResponse.class).containers());
+                    }
 
-        request = new Request.Builder()
-                .url(baseUrl + "/live-updates")
-                .addHeader("Authorization", secret)
-                .build();
-        liveUpdatesWebSocket = httpClient.newWebSocket(request, new LiveUpdatesWebSocketListener(this));
+                    request = new Request.Builder()
+                            .url(baseUrl + "/live-updates")
+                            .addHeader("Authorization", secret)
+                            .build();
+                    liveUpdatesWebSocket = httpClient.newWebSocket(request, new LiveUpdatesWebSocketListener(this));
+                    System.out.println("Successfully connected to VerticallySpinningFish API.");
+                    break;
+                } catch (IOException e) {
+                    System.err.println("Failed to connect to VerticallySpinningFish API. Retrying in 15 seconds...");
+                    try {
+                        Thread.sleep(15_000);
+                    } catch (InterruptedException interruptedException) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+        });
     }
 
     public void close() {
         closed = true;
-        liveUpdatesWebSocket.close(1000, "Disconnect");
+        if (reconnectThread != null) {
+            reconnectThread.interrupt();
+        }
+        if (liveUpdatesWebSocket != null) {
+            liveUpdatesWebSocket.close(1000, "Disconnect");
+        }
     }
 
     public @NotNull String getContainerPrefix() {
