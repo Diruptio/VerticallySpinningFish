@@ -30,6 +30,7 @@ public class VerticallySpinningFishApi {
     List<Container> containers = Collections.emptyList();
     private final List<Consumer<Container>> containerAddListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Container>> containerRemoveListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Container>> containerStatusListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<PlayerConnectUpdate>> playerConnectListeners = new CopyOnWriteArrayList<>();
 
     public VerticallySpinningFishApi(@NotNull String containerPrefix, @NotNull String baseUrl, @NotNull String secret) {
@@ -155,9 +156,7 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                System.out.println("Connected player " + player + " to container " + containerId);
-            } else {
+            if (!response.isSuccessful()) {
                 System.err.println("Failed to connect player " + player + " to container " + containerId + ": " + response.body().string());
             }
         } catch (IOException | RuntimeException e) {
@@ -172,9 +171,7 @@ public class VerticallySpinningFishApi {
                 .addHeader("Authorization", secret)
                 .build();
         try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                System.out.println("Status of container " + containerId + " was set to " + secret);
-            } else {
+            if (!response.isSuccessful()) {
                 System.err.println("Failed to set status of container " + containerId + " to " + status + ": " + response.body().string());
             }
         } catch (IOException | RuntimeException e) {
@@ -192,6 +189,10 @@ public class VerticallySpinningFishApi {
 
     public @NotNull List<Consumer<PlayerConnectUpdate>> getPlayerConnectListeners() {
         return playerConnectListeners;
+    }
+
+    public @NotNull List<Consumer<Container>> getContainerStatusListeners() {
+        return containerStatusListeners;
     }
 
     public static @NotNull VerticallySpinningFishApi fromCurrentContainer() {

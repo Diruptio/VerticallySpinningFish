@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.7.12"
+version = "0.7.13"
 
 repositories {
     mavenCentral()
