@@ -105,6 +105,15 @@ public class VerticallySpinningFishApi {
         return groups;
     }
 
+    public @Nullable Group getGroupByName(@NotNull String name) {
+        for (Group group : groups) {
+            if (group.name().equals(name)) {
+                return group;
+            }
+        }
+        return null;
+    }
+
     public @Nullable Group getGroupByContainer(@NotNull String containerName) {
         for (Group group : groups) {
             if (containerName.startsWith(containerPrefix + group.name())) {
