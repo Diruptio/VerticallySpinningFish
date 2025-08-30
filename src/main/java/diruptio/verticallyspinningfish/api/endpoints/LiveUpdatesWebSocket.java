@@ -29,8 +29,15 @@ public class LiveUpdatesWebSocket implements Consumer<WsConfig>, WsConnectHandle
 
     public static void broadcastUpdate(@NotNull LiveUpdate update) {
         for (WsContext ctx : connections) {
-            ctx.send(update.type());
-            ctx.send(update);
+            try {
+                ctx.send(update.type());
+                ctx.send(update);
+            } catch (Exception ignored) {
+                connections.remove(ctx);
+                try {
+                    ctx.closeSession();
+                } catch (Exception ignored2) {}
+            }
         }
     }
 }
