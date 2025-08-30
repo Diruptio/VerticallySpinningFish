@@ -3,10 +3,7 @@ package diruptio.verticallyspinningfish;
 import com.google.gson.Gson;
 import diruptio.verticallyspinningfish.api.*;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import okhttp3.OkHttpClient;
@@ -116,7 +113,7 @@ public class VerticallySpinningFishApi {
 
     public @Nullable Group getGroupByContainer(@NotNull String containerName) {
         for (Group group : groups) {
-            if (containerName.startsWith(containerPrefix + group.name())) {
+            if (containerName.startsWith(containerPrefix + group.name() + "-")) {
                 return group;
             }
         }
@@ -124,6 +121,17 @@ public class VerticallySpinningFishApi {
     }
 
     public @NotNull List<Container> getContainers() {
+        return containers;
+    }
+
+    public @NotNull List<Container> getContainersByGroup(@NotNull String name) {
+        String prefix = containerPrefix + name + "-";
+        List<Container> containers = new ArrayList<>();
+        for (Container container : this.containers) {
+            if (container.getName().startsWith(prefix)) {
+                containers.add(container);
+            }
+        }
         return containers;
     }
 
