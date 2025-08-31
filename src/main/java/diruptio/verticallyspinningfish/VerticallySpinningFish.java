@@ -232,8 +232,6 @@ public class VerticallySpinningFish {
         List<Bind> binds = new ArrayList<>();
         List<String> volumes = new ArrayList<>(group.getVolumes());
         if (volumes.size() == 1) {
-            System.out.println(group.getName());
-            System.out.println(group.getTemplate());
             Path templatePath = TemplateBuilder.build(group.getTemplate());
             Path path = Path.of("running", containerName);
             if (Files.isDirectory(path)) {
