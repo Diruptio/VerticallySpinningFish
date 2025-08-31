@@ -23,21 +23,27 @@ public class LiveUpdatesWebSocket implements Consumer<WsConfig>, WsConnectHandle
     }
 
     @Override
-    public void handleClose(@NotNull WsCloseContext ctx) {
-        connections.remove(ctx);
+    public void handleClose(WsCloseContext ctx) {
+        if (ctx != null) {
+            connections.remove(ctx);
+        }
     }
 
     public static void broadcastUpdate(@NotNull LiveUpdate update) {
+        List<WsContext> connectionsToClose = new ArrayList<>();
         for (WsContext ctx : connections) {
             try {
                 ctx.send(update.type());
                 ctx.send(update);
             } catch (Exception ignored) {
-                connections.remove(ctx);
-                try {
-                    ctx.closeSession();
-                } catch (Exception ignored2) {}
+                connectionsToClose.add(ctx);
             }
+        }
+        for (WsContext ctx : connectionsToClose) {
+            connections.remove(ctx);
+            try {
+                ctx.closeSession();
+            } catch (Exception ignored) {}
         }
     }
 }
