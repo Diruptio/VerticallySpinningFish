@@ -1,5 +1,6 @@
 package diruptio.verticallyspinningfish.template;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,7 +27,7 @@ public class TemplateBuilder {
         };
     }
 
-    public static @NotNull Path build(@NotNull List<TemplateStep> template) throws Exception {
+    public static @NotNull Path build(@NotNull List<TemplateStep> template) throws IOException {
         String hash = Hashing.sha256().hashString("", StandardCharsets.UTF_8).toString();
         Path templateDir = Path.of("cache", "templates", hash);
         if (!Files.exists(templateDir)) {
@@ -34,6 +35,10 @@ public class TemplateBuilder {
         }
 
         for (TemplateStep step : template) {
+            if (step instanceof CopyStep) {
+                step.update();
+            }
+
             hash = Hashing.sha256().hashString(hash + step.hash(), StandardCharsets.UTF_8).toString();
             Path newTemplateDir = Path.of("cache", "templates", hash);
 
