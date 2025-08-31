@@ -28,7 +28,6 @@ public class Group {
     private Set<Integer> ports = Set.of();
     private Set<String> volumes = Set.of();
     private String imageId = null;
-    private Path templateDir = null;
 
     private Group(@NotNull String name,
                   int minCount,
@@ -89,6 +88,19 @@ public class Group {
             List<String> lines = Files.readAllLines(originalPath);
             lines.replaceAll(new PlaceholderEngine()::resolve);
 
+            String content = String.join("\n", lines);
+            String hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
+            String containerPrefix = VerticallySpinningFish.getContainerPrefix();
+            String imageName = containerPrefix + "group/" + name;
+            imageId = VerticallySpinningFish.getDockerClient()
+                    .inspectImageCmd(imageName + ":" + hash)
+                    .exec()
+                    .getId();
+
+            if (imageId != null) {
+                return;
+            }
+
             ports = lines.stream()
                     .filter(line -> line.startsWith("EXPOSE "))
                     .flatMap(line -> Stream.of(
@@ -107,25 +119,21 @@ public class Group {
                     .filter(Predicate.not(String::isBlank))
                     .collect(Collectors.toUnmodifiableSet());
 
-            String content = String.join("\n", lines);
-            String hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
-            if (dockerfileHash == null || !dockerfileHash.equals(hash)) {
-                dockerfileHash = hash;
-                System.out.println("Building image for group: " + name);
-                Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
-                Files.createDirectories(preparedPath.getParent());
-                Files.writeString(preparedPath, content);
-                imageId = VerticallySpinningFish.getDockerClient()
-                        .buildImageCmd()
-                        .withBaseDirectory(Path.of("").toAbsolutePath().toFile())
-                        .withDockerfile(preparedPath.toFile())
-                        .start()
-                        .awaitImageId();
-                VerticallySpinningFish.getDockerClient()
-                        .tagImageCmd(imageId, VerticallySpinningFish.getContainerPrefix() + "group/" + name, hash)
-                        .withForce()
-                        .exec();
-            }
+            dockerfileHash = hash;
+            System.out.println("Building image for group: " + name);
+            Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
+            Files.createDirectories(preparedPath.getParent());
+            Files.writeString(preparedPath, content);
+            imageId = VerticallySpinningFish.getDockerClient()
+                    .buildImageCmd()
+                    .withBaseDirectory(Path.of("").toAbsolutePath().toFile())
+                    .withDockerfile(preparedPath.toFile())
+                    .start()
+                    .awaitImageId();
+            VerticallySpinningFish.getDockerClient()
+                    .tagImageCmd(imageId, imageName, hash)
+                    .withForce()
+                    .exec();
         } catch (IOException e) {
             new Exception("Failed to rebuild image of group: " + name, e).printStackTrace(System.err);
         }
@@ -169,13 +177,5 @@ public class Group {
 
     public @NotNull List<TemplateStep> getTemplate() {
         return template;
-    }
-
-    public @Nullable Path getTemplateDir() {
-        return templateDir;
-    }
-
-    public void setTemplateDir(@NotNull Path templateDir) {
-        this.templateDir = templateDir;
     }
 }

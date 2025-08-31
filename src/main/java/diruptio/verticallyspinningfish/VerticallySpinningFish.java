@@ -71,13 +71,6 @@ public class VerticallySpinningFish {
                     Group group = Group.read(path);
                     System.out.println("Loading container group: " + group.getName());
                     groups.put(group.getName(), group);
-                    executor.submit(() -> {
-                        try {
-                            group.setTemplateDir(TemplateBuilder.build(group.getTemplate()));
-                        } catch (Exception e) {
-                            new Exception("Failed to build template for group: " + group.getName(), e).printStackTrace(System.err);
-                        }
-                    });
                     executor.submit(group::rebuildImageIfNeeded);
                 }
             });
