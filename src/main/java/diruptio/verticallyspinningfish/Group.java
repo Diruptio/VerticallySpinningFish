@@ -1,5 +1,6 @@
 package diruptio.verticallyspinningfish;
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.google.common.hash.Hashing;
 import diruptio.util.config.Config;
 import diruptio.util.config.ConfigSection;
@@ -24,7 +25,6 @@ public class Group {
     private final boolean deleteOnStop;
     private final Set<String> tags;
     private final List<TemplateStep> template;
-    private String dockerfileHash = null;
     private Set<Integer> ports = Set.of();
     private Set<String> volumes = Set.of();
     private String imageId = null;
@@ -83,59 +83,61 @@ public class Group {
     }
 
     public void rebuildImageIfNeeded() {
+        List<String> lines = null;
+        String content = null;
+        String hash = null;
+        String imageName = null;
         try {
             Path originalPath = Path.of("groups").resolve(name + ".Dockerfile");
-            List<String> lines = Files.readAllLines(originalPath);
+            lines = Files.readAllLines(originalPath);
             lines.replaceAll(new PlaceholderEngine()::resolve);
 
-            String content = String.join("\n", lines);
-            String hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
-            String containerPrefix = VerticallySpinningFish.getContainerPrefix();
-            String imageName = containerPrefix + "group/" + name;
+            content = String.join("\n", lines);
+            hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
+            imageName = VerticallySpinningFish.getContainerPrefix() + "group/" + name;
             imageId = VerticallySpinningFish.getDockerClient()
                     .inspectImageCmd(imageName + ":" + hash)
                     .exec()
                     .getId();
+        } catch (NotFoundException ignored) {
+            try {
+                ports = lines.stream()
+                        .filter(line -> line.startsWith("EXPOSE "))
+                        .flatMap(line -> Stream.of(
+                                line.substring(7)
+                                        .replaceAll("[\"'\\[\\]\\s]", "")
+                                        .split(",")))
+                        .filter(Predicate.not(String::isBlank))
+                        .map(Integer::parseInt)
+                        .collect(Collectors.toUnmodifiableSet());
+                volumes = lines.stream()
+                        .filter(line -> line.startsWith("VOLUME "))
+                        .flatMap(line -> Stream.of(
+                                line.substring(7)
+                                        .replaceAll("[\"'\\[\\]\\s]", "")
+                                        .split(",")))
+                        .filter(Predicate.not(String::isBlank))
+                        .collect(Collectors.toUnmodifiableSet());
 
-            if (imageId != null) {
-                return;
+                System.out.println("Building image for group: " + name);
+                Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
+                Files.createDirectories(preparedPath.getParent());
+                Files.writeString(preparedPath, content);
+                imageId = VerticallySpinningFish.getDockerClient()
+                        .buildImageCmd()
+                        .withBaseDirectory(Path.of("").toAbsolutePath().toFile())
+                        .withDockerfile(preparedPath.toFile())
+                        .start()
+                        .awaitImageId();
+                VerticallySpinningFish.getDockerClient()
+                        .tagImageCmd(imageId, imageName, hash)
+                        .withForce()
+                        .exec();
+            } catch (IOException e) {
+                new Exception("Failed to rebuild image of group: " + name, e).printStackTrace(System.err);
             }
-
-            ports = lines.stream()
-                    .filter(line -> line.startsWith("EXPOSE "))
-                    .flatMap(line -> Stream.of(
-                            line.substring(7)
-                                    .replaceAll("[\"'\\[\\]\\s]", "")
-                                    .split(",")))
-                    .filter(Predicate.not(String::isBlank))
-                    .map(Integer::parseInt)
-                    .collect(Collectors.toUnmodifiableSet());
-            volumes = lines.stream()
-                    .filter(line -> line.startsWith("VOLUME "))
-                    .flatMap(line -> Stream.of(
-                            line.substring(7)
-                                    .replaceAll("[\"'\\[\\]\\s]", "")
-                                    .split(",")))
-                    .filter(Predicate.not(String::isBlank))
-                    .collect(Collectors.toUnmodifiableSet());
-
-            dockerfileHash = hash;
-            System.out.println("Building image for group: " + name);
-            Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
-            Files.createDirectories(preparedPath.getParent());
-            Files.writeString(preparedPath, content);
-            imageId = VerticallySpinningFish.getDockerClient()
-                    .buildImageCmd()
-                    .withBaseDirectory(Path.of("").toAbsolutePath().toFile())
-                    .withDockerfile(preparedPath.toFile())
-                    .start()
-                    .awaitImageId();
-            VerticallySpinningFish.getDockerClient()
-                    .tagImageCmd(imageId, imageName, hash)
-                    .withForce()
-                    .exec();
         } catch (IOException e) {
-            new Exception("Failed to rebuild image of group: " + name, e).printStackTrace(System.err);
+            new Exception("Failed to read Dockerfile of group: " + name, e).printStackTrace(System.err);
         }
     }
 
@@ -157,10 +159,6 @@ public class Group {
 
     public @NotNull Set<String> getTags() {
         return tags;
-    }
-
-    public @NotNull String getDockerfileHash() {
-        return dockerfileHash;
     }
 
     public @NotNull Set<Integer> getPorts() {
