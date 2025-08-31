@@ -83,7 +83,7 @@ public class Group {
     }
 
     public void rebuildImageIfNeeded() {
-        List<String> lines = null;
+        List<String> lines;
         String content = null;
         String hash = null;
         String imageName = null;
@@ -91,6 +91,24 @@ public class Group {
             Path originalPath = Path.of("groups").resolve(name + ".Dockerfile");
             lines = Files.readAllLines(originalPath);
             lines.replaceAll(new PlaceholderEngine()::resolve);
+
+            ports = lines.stream()
+                    .filter(line -> line.startsWith("EXPOSE "))
+                    .flatMap(line -> Stream.of(
+                            line.substring(7)
+                                    .replaceAll("[\"'\\[\\]\\s]", "")
+                                    .split(",")))
+                    .filter(Predicate.not(String::isBlank))
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toUnmodifiableSet());
+            volumes = lines.stream()
+                    .filter(line -> line.startsWith("VOLUME "))
+                    .flatMap(line -> Stream.of(
+                            line.substring(7)
+                                    .replaceAll("[\"'\\[\\]\\s]", "")
+                                    .split(",")))
+                    .filter(Predicate.not(String::isBlank))
+                    .collect(Collectors.toUnmodifiableSet());
 
             content = String.join("\n", lines);
             hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
@@ -101,24 +119,6 @@ public class Group {
                     .getId();
         } catch (NotFoundException ignored) {
             try {
-                ports = lines.stream()
-                        .filter(line -> line.startsWith("EXPOSE "))
-                        .flatMap(line -> Stream.of(
-                                line.substring(7)
-                                        .replaceAll("[\"'\\[\\]\\s]", "")
-                                        .split(",")))
-                        .filter(Predicate.not(String::isBlank))
-                        .map(Integer::parseInt)
-                        .collect(Collectors.toUnmodifiableSet());
-                volumes = lines.stream()
-                        .filter(line -> line.startsWith("VOLUME "))
-                        .flatMap(line -> Stream.of(
-                                line.substring(7)
-                                        .replaceAll("[\"'\\[\\]\\s]", "")
-                                        .split(",")))
-                        .filter(Predicate.not(String::isBlank))
-                        .collect(Collectors.toUnmodifiableSet());
-
                 System.out.println("Building image for group: " + name);
                 Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
                 Files.createDirectories(preparedPath.getParent());

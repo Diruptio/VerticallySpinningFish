@@ -71,6 +71,11 @@ public class VerticallySpinningFish {
                     Group group = Group.read(path);
                     System.out.println("Loading container group: " + group.getName());
                     groups.put(group.getName(), group);
+                    for (TemplateStep step : group.getTemplate()) {
+                        if (!(step instanceof CopyStep)) {
+                            executor.submit(step::update);
+                        }
+                    }
                     executor.submit(group::rebuildImageIfNeeded);
                 }
             });
@@ -227,6 +232,8 @@ public class VerticallySpinningFish {
         List<Bind> binds = new ArrayList<>();
         List<String> volumes = new ArrayList<>(group.getVolumes());
         if (volumes.size() == 1) {
+            System.out.println(group.getName());
+            System.out.println(group.getTemplate());
             Path templatePath = TemplateBuilder.build(group.getTemplate());
             Path path = Path.of("running", containerName);
             if (Files.isDirectory(path)) {
