@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.jetbrains:annotations:26.0.2")
+    compileOnly("org.jetbrains:annotations:26.0.2-1")
     implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.6.0")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
