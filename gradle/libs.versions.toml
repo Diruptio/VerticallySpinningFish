@@ -1,0 +1,36 @@
+[versions]
+java = "21"
+jetbrainsAnnotations = "26.0.2-1"
+okhttp = "5.1.0"
+gson = "2.13.1"
+dockerJava = "3.6.0"
+slf4jSimple = "2.0.17"
+javalin = "6.7.0"
+javalinOpenapi = "6.7.0-2"
+velocity = "3.4.0-SNAPSHOT"
+commonsIo = "2.17.0"
+guava = "33.3.1-jre"
+diruptioUtil = "1.6.28"
+
+[libraries]
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+docker-java = { module = "com.github.docker-java:docker-java", version.ref = "dockerJava" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4jSimple" }
+javalin-core = { module = "io.javalin:javalin", version.ref = "javalin" }
+javalin-openapi = { module = "io.javalin.community.openapi:javalin-openapi-plugin", version.ref = "javalinOpenapi" }
+javalin-swagger = { module = "io.javalin.community.openapi:javalin-swagger-plugin", version.ref = "javalinOpenapi" }
+javalin-annotation-processor = { module = "io.javalin.community.openapi:openapi-annotation-processor", version.ref = "javalinOpenapi" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
+activation = { module = "javax.activation:activation", version = "1.1.1" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commonsIo" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+diruptio-util = { module = "diruptio:DiruptioUtil", version.ref = "diruptioUtil" }
+
+[bundles]
+javalin = ["javalin-core", "javalin-openapi", "javalin-swagger"]
+
+[plugins]
+java = { id = "java" }
+maven-publish = { id = "maven-publish" }

@@ -1,31 +1,16 @@
 plugins {
-    id("java")
-}
-
-group = "diruptio"
-version = "0.7.22"
-
-repositories {
-    mavenCentral()
-    maven("https://repo.diruptio.de/repository/maven-private") {
-        credentials {
-            username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("maven_username") ?: "").toString()
-            password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("maven_password") ?: "").toString()
-        }
-    }
+    id("vsf.java-conventions")
 }
 
 dependencies {
-    compileOnly("org.jetbrains:annotations:26.0.2-1")
-    implementation("diruptio:DiruptioUtil:1.6.28")
-    implementation("com.github.docker-java:docker-java:3.6.0")
-    implementation("com.squareup.okhttp3:okhttp:5.1.0")
-    implementation("org.slf4j:slf4j-simple:2.0.17")
-    implementation("io.javalin:javalin:6.7.0")
-    implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0-2")
-    implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0-2")
-    annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:6.7.0-2")
-    runtimeOnly("javax.activation:activation:1.1.1")
+    compileOnly(libs.jetbrains.annotations)
+    implementation(libs.diruptio.util)
+    implementation(libs.docker.java)
+    implementation(libs.okhttp)
+    implementation(libs.slf4j.simple)
+    implementation(libs.bundles.javalin)
+    annotationProcessor(libs.javalin.annotation.processor)
+    runtimeOnly(libs.activation)
 }
 
 val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
@@ -45,8 +30,6 @@ sourceSets.main {
 tasks {
     compileJava {
         dependsOn(addSubprojectJars)
-        options.encoding = "UTF-8"
-        options.release = 21
     }
 
     jar {
