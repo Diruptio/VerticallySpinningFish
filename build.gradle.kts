@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     compileOnly(libs.jetbrains.annotations)
+    implementation(project(":common"))
     implementation(libs.diruptio.util)
     implementation(libs.docker.java)
     implementation(libs.okhttp)
@@ -22,8 +23,6 @@ val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
 }
 
 sourceSets.main {
-    java.srcDir(rootProject.file("common/src/main/java"))
-    resources.srcDir(rootProject.file("common/src/main/resources"))
     resources.srcDir(addSubprojectJars.map { it.outputs })
 }
 

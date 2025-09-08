@@ -5,13 +5,9 @@ plugins {
 
 dependencies {
     compileOnly(libs.jetbrains.annotations)
+    implementation(project(":common"))
     implementation(libs.okhttp)
     implementation(libs.gson)
-}
-
-sourceSets.main {
-    java.srcDir(rootProject.file("common/src/main/java"))
-    resources.srcDir(rootProject.file("common/src/main/resources"))
 }
 
 tasks {
