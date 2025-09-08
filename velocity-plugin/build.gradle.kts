@@ -1,14 +1,21 @@
 plugins {
-    id("vsf.java-conventions")
+    id("java")
 }
 
 repositories {
+    mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public")
+    maven("https://repo.diruptio.de/repository/maven-private") {
+        credentials {
+            username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("maven_username") ?: "").toString()
+            password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("maven_password") ?: "").toString()
+        }
+    }
 }
 
 dependencies {
-    compileOnly(libs.velocity.api)
-    annotationProcessor(libs.velocity.api)
+    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     implementation(project(":api"))
 }
 
