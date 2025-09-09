@@ -83,6 +83,10 @@ public class Group {
     }
 
     public void rebuildImageIfNeeded() {
+        rebuildImageIfNeeded(VerticallySpinningFish.getDockerService(), VerticallySpinningFish.getContainerPrefix());
+    }
+
+    public void rebuildImageIfNeeded(diruptio.verticallyspinningfish.service.DockerService dockerService, String containerPrefix) {
         List<String> lines;
         String content = null;
         String hash = null;
@@ -112,8 +116,8 @@ public class Group {
 
             content = String.join("\n", lines);
             hash = Hashing.sha256().hashString(content, StandardCharsets.UTF_8).toString();
-            imageName = VerticallySpinningFish.getContainerPrefix() + "group/" + name;
-            imageId = VerticallySpinningFish.getDockerClient()
+            imageName = containerPrefix + "group/" + name;
+            imageId = dockerService.getClient()
                     .inspectImageCmd(imageName + ":" + hash)
                     .exec()
                     .getId();
@@ -123,13 +127,13 @@ public class Group {
                 Path preparedPath = Path.of("cache").resolve("dockerfiles").resolve(hash);
                 Files.createDirectories(preparedPath.getParent());
                 Files.writeString(preparedPath, content);
-                imageId = VerticallySpinningFish.getDockerClient()
+                imageId = dockerService.getClient()
                         .buildImageCmd()
                         .withBaseDirectory(Path.of("").toAbsolutePath().toFile())
                         .withDockerfile(preparedPath.toFile())
                         .start()
                         .awaitImageId();
-                VerticallySpinningFish.getDockerClient()
+                dockerService.getClient()
                         .tagImageCmd(imageId, imageName, hash)
                         .withForce()
                         .exec();

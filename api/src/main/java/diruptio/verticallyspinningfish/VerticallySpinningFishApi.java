@@ -41,7 +41,7 @@ public class VerticallySpinningFishApi {
         if (reconnectThread != null && reconnectThread.isAlive()) {
             return;
         }
-        reconnectThread = Thread.ofVirtual().start(() -> {
+        reconnectThread = new Thread(() -> {
             while (!closed) {
                 try {
                     Request request = new Request.Builder()
@@ -82,6 +82,7 @@ public class VerticallySpinningFishApi {
                 }
             }
         });
+        reconnectThread.start();
     }
 
     public void close() {

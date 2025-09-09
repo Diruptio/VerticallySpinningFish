@@ -23,7 +23,7 @@ public class WebApiThread implements Runnable {
     public void run() {
         Javalin javalin = Javalin.create(config -> {
             config.showJavalinBanner = false;
-            config.useVirtualThreads = true;
+            config.useVirtualThreads = false;
             config.http.asyncTimeout = 10000L;
             config.bundledPlugins.enableCors(cors -> cors.addRule(CorsPluginConfig.CorsRule::anyHost));
             config.registerPlugin(new OpenApiPlugin(openApiConfig -> {

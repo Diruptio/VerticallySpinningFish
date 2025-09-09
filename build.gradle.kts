@@ -46,7 +46,7 @@ tasks {
     compileJava {
         dependsOn(addSubprojectJars)
         options.encoding = "UTF-8"
-        options.release = 21
+        options.release = 17
     }
 
     jar {

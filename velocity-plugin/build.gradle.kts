@@ -30,6 +30,8 @@ sourceSets.main.get().java.srcDir(generateSources.map { it.outputs })
 tasks {
     compileJava {
         dependsOn(generateSources)
+        options.encoding = "UTF-8"
+        options.release = 17
     }
 
     jar {
