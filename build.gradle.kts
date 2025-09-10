@@ -7,17 +7,10 @@ version = "0.7.22"
 
 repositories {
     mavenCentral()
-    maven("https://repo.diruptio.de/repository/maven-private") {
-        credentials {
-            username = (System.getenv("DIRUPTIO_REPO_USERNAME") ?: project.findProperty("maven_username") ?: "").toString()
-            password = (System.getenv("DIRUPTIO_REPO_PASSWORD") ?: project.findProperty("maven_password") ?: "").toString()
-        }
-    }
 }
 
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
-    implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.6.0")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
     implementation("org.slf4j:slf4j-simple:2.0.17")
