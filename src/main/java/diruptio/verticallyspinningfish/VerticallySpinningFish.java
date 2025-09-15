@@ -66,14 +66,13 @@ public class VerticallySpinningFish {
         }
 
         // Get host user information for proper file ownership in containers
-        try {
-            Process process = new ProcessBuilder("id", "-u").start();
-            String uid = new String(process.getInputStream().readAllBytes()).trim();
-            process = new ProcessBuilder("id", "-g").start();
-            String gid = new String(process.getInputStream().readAllBytes()).trim();
+        String uid = System.getenv("HOST_UID");
+        String gid = System.getenv("HOST_GID");
+        if (uid != null && gid != null) {
             hostUserId = uid + ":" + gid;
-        } catch (IOException e) {
-            System.err.println("Warning: Could not determine host user ID, files in containers may have incorrect ownership");
+            System.out.println("Using host user ID: " + hostUserId);
+        } else {
+            System.err.println("Warning: HOST_UID and HOST_GID environment variables not set, files in containers may have incorrect ownership");
             hostUserId = null;
         }
 
