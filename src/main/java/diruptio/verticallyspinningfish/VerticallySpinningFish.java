@@ -245,12 +245,27 @@ public class VerticallySpinningFish {
             throw new IllegalArgumentException("Only 1 volume per container is allowed");
         }
 
+        List<String> env = new ArrayList<>();
+        env.add("VSF_PREFIX=" + containerPrefix);
+        env.add("VSF_API_PORT=" + exposedApiPort);
+        env.add("VSF_SECRET=" + secret);
+
+        String hostUid = System.getenv("HOST_UID");
+        if (hostUid != null) {
+            env.add("HOST_UID=" + hostUid);
+        }
+
+        String hostGid = System.getenv("HOST_GID");
+        if (hostGid != null) {
+            env.add("HOST_GID=" + hostGid);
+        }
+
         String containerId = dockerClient.createContainerCmd(group.getImageId())
                 .withName(containerName)
                 .withHostConfig(HostConfig.newHostConfig()
                         .withPortBindings(portBindings)
                         .withBinds(binds))
-                .withEnv("VSF_PREFIX=" + containerPrefix, "VSF_API_PORT=" + exposedApiPort, "VSF_SECRET=" + secret)
+                .withEnv(env)
                 .withTty(true)
                 .withStdinOpen(true)
                 .exec()
