@@ -1,6 +1,7 @@
 package diruptio.verticallyspinningfish;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
@@ -31,6 +32,7 @@ public class VerticallySpinningFish {
     private static final List<Container> containers = new ArrayList<>();
     private static String hostWorkingDir;
     private static Integer exposedApiPort;
+    private static String hostUserId;
 
     public static void main(String[] args) throws IOException {
         Config config = new Config(Path.of("config.yml"), Config.Type.YAML);
@@ -61,6 +63,18 @@ public class VerticallySpinningFish {
             if (bind.getVolume().getPath().equals(Path.of("").toAbsolutePath().toString())) {
                 hostWorkingDir = bind.getPath();
             }
+        }
+
+        // Get host user information for proper file ownership in containers
+        try {
+            Process process = new ProcessBuilder("id", "-u").start();
+            String uid = new String(process.getInputStream().readAllBytes()).trim();
+            process = new ProcessBuilder("id", "-g").start();
+            String gid = new String(process.getInputStream().readAllBytes()).trim();
+            hostUserId = uid + ":" + gid;
+        } catch (IOException e) {
+            System.err.println("Warning: Could not determine host user ID, files in containers may have incorrect ownership");
+            hostUserId = null;
         }
 
         // Load groups
@@ -245,16 +259,21 @@ public class VerticallySpinningFish {
             throw new IllegalArgumentException("Only 1 volume per container is allowed");
         }
 
-        String containerId = dockerClient.createContainerCmd(group.getImageId())
+        CreateContainerCmd createCmd = dockerClient.createContainerCmd(group.getImageId())
                 .withName(containerName)
                 .withHostConfig(HostConfig.newHostConfig()
                         .withPortBindings(portBindings)
                         .withBinds(binds))
                 .withEnv("VSF_PREFIX=" + containerPrefix, "VSF_API_PORT=" + exposedApiPort, "VSF_SECRET=" + secret)
                 .withTty(true)
-                .withStdinOpen(true)
-                .exec()
-                .getId();
+                .withStdinOpen(true);
+
+        // Set user if available to ensure files belong to the host user
+        if (hostUserId != null) {
+            createCmd.withUser(hostUserId);
+        }
+
+        String containerId = createCmd.exec().getId();
 
         Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
         containers.add(container);
