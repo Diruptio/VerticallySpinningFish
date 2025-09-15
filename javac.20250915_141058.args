@@ -1,3 +1,0 @@
--cp
-/home/runner/.gradle/caches/9.0.0/generated-gradle-jars/gradle-api-9.0.0.jar:/home/runner/.gradle/wrapper/dists/gradle-9.0.0-bin/d6wjpkvcgsg3oed0qlfss3wgl/gradle-9.0.0/lib/native-platform-windows-amd64-0.22-milestone-28.jar:/home/runner/.gradle/wrapper/dists/gradle-9.0.0-bin/d6wjpkvcgsg3oed0qlfss3wgl/gradle-9.0.0/lib/gradle-scoped-persistent-cache-9.0.0.jar:/home/runner/.gradle/wrapper/dists/gradle-9.0.0-bin/d6wjpkvcgsg3oed0qlfss3wgl/gradle-9.0.0/lib/fastutil-8.5.2-min.jar:/home/runner/.gradle/wrapper/dists/gradle-9.0.0-bin/d6wjpkvcgsg3oed0qlfss3wgl/gradle-9.0.0/lib/gradle-file-watching-9.0.0.jar::.
-src/main/java/diruptio/verticallyspinningfish/VerticallySpinningFish.java
