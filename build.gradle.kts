@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.7.24"
+version = "0.7.26"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,7 @@ repositories {
 
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
+    implementation(project(":common"))
     implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.6.0")
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
@@ -37,8 +38,6 @@ val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
 }
 
 sourceSets.main {
-    java.srcDir(rootProject.file("common/src/main/java"))
-    resources.srcDir(rootProject.file("common/src/main/resources"))
     resources.srcDir(addSubprojectJars.map { it.outputs })
 }
 

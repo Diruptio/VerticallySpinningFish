@@ -9,13 +9,9 @@ repositories {
 
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
+    implementation(project(":common"))
     implementation("com.squareup.okhttp3:okhttp:5.1.0")
     implementation("com.google.code.gson:gson:2.13.2")
-}
-
-sourceSets.main {
-    java.srcDir(rootProject.file("common/src/main/java"))
-    resources.srcDir(rootProject.file("common/src/main/resources"))
 }
 
 tasks {

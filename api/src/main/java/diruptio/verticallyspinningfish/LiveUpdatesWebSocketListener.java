@@ -29,14 +29,14 @@ public class LiveUpdatesWebSocketListener extends WebSocketListener {
     @Override
     public void onClosed(@NotNull WebSocket webSocket, int code, @NotNull String reason) {
         if (!api.closed) {
-            api.connect();
+            api.reconnect();
         }
     }
 
     @Override
     public void onFailure(@NotNull WebSocket webSocket, @NotNull Throwable t, @Nullable Response response) {
         if (!api.closed) {
-            api.connect();
+            api.reconnect();
         }
     }
 
