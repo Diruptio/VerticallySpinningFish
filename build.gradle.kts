@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "diruptio"
-version = "0.7.27"
+version = "0.8.0"
 
 repositories {
     mavenCentral()
@@ -30,10 +30,11 @@ dependencies {
 }
 
 val addSubprojectJars = tasks.register<Copy>("addSubprojectJars") {
+    val paperPluginTask = project(":paper-plugin").tasks.jar.get()
     val velocityPluginTask = project(":velocity-plugin").tasks.jar.get()
-    dependsOn(velocityPluginTask)
+    dependsOn(paperPluginTask, velocityPluginTask)
     doFirst { delete(layout.buildDirectory.dir("generated/sources/resources").get()) }
-    from(velocityPluginTask.outputs)
+    from(paperPluginTask.outputs, velocityPluginTask.outputs)
     into(layout.buildDirectory.dir("generated/sources/resources"))
 }
 

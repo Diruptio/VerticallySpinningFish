@@ -22,6 +22,7 @@ public class TemplateBuilder {
             case "modrinth" -> new ModrinthStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
             case "papermc-hangar" -> new PaperMCHangarStep(config);
+            case "paper-plugin" -> new PaperPluginStep();
             case "velocity-plugin" -> new VelocityPluginStep();
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
         };

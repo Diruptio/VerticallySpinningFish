@@ -1,0 +1,6 @@
+name: VerticallySpinningFish
+main: diruptio.verticallyspinningfish.paper.VSFPaperPlugin
+version: "${version}"
+api-version: "1.21"
+authors:
+- Fabi.exe
