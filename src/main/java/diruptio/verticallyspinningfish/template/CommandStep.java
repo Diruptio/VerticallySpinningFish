@@ -20,9 +20,9 @@ public class CommandStep implements TemplateStep {
         }
         command = config.get("command").toString();
         
-        // Cache OS detection result
+        // Cache OS detection result - using startsWith for more reliable Windows detection
         String os = System.getProperty("os.name").toLowerCase();
-        isWindows = os.contains("win");
+        isWindows = os.startsWith("windows");
 
         update();
     }
@@ -67,11 +67,13 @@ public class CommandStep implements TemplateStep {
         try {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                throw new IOException("Command exited with code " + exitCode + ": " + command);
+                throw new IOException("Command exited with code " + exitCode + " in directory " 
+                        + directory.toAbsolutePath() + ": " + command);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Command was interrupted: " + command, e);
+            throw new IOException("Command was interrupted in directory " 
+                    + directory.toAbsolutePath() + ": " + command, e);
         }
     }
 }
