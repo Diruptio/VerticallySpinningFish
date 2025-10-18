@@ -24,6 +24,7 @@ public class TemplateBuilder {
             case "papermc-hangar" -> new PaperMCHangarStep(config);
             case "paper-plugin" -> new PaperPluginStep();
             case "velocity-plugin" -> new VelocityPluginStep();
+            case "command" -> new CommandStep(config);
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
         };
     }
