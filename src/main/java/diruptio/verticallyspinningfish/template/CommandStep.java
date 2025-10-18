@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class CommandStep implements TemplateStep {
     private final String command;
+    private final boolean isWindows;
     private String hash;
 
     public CommandStep(@NotNull ConfigSection config) {
@@ -18,13 +19,19 @@ public class CommandStep implements TemplateStep {
             throw new IllegalArgumentException("Parameter \"command\" is missing");
         }
         command = config.get("command").toString();
+        
+        // Cache OS detection result
+        String os = System.getProperty("os.name").toLowerCase();
+        isWindows = os.contains("win");
 
         update();
     }
 
     @Override
     public void update() {
-        hash = "command:" + command;
+        // Include OS type in hash to ensure different behavior on different platforms is cached separately
+        String osType = isWindows ? "windows" : "unix";
+        hash = "command:" + osType + ":" + command;
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }
 
@@ -35,10 +42,9 @@ public class CommandStep implements TemplateStep {
 
     @Override
     public void apply(@NotNull Path directory) throws IOException {
-        String os = System.getProperty("os.name").toLowerCase();
         String[] shellCommand;
         
-        if (os.contains("win")) {
+        if (isWindows) {
             shellCommand = new String[]{"cmd", "/c", command};
         } else {
             shellCommand = new String[]{"sh", "-c", command};
