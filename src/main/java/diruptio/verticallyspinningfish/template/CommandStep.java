@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class CommandStep implements TemplateStep {
     private final String command;
+    private final String input;
     private final boolean isWindows;
     private String hash;
 
@@ -19,6 +20,12 @@ public class CommandStep implements TemplateStep {
             throw new IllegalArgumentException("Parameter \"command\" is missing");
         }
         command = config.get("command").toString();
+        
+        if (config.contains("input")) {
+            input = config.get("input").toString();
+        } else {
+            input = null;
+        }
         
         // Cache OS detection result - using startsWith for more reliable Windows detection
         String os = System.getProperty("os.name").toLowerCase();
@@ -31,7 +38,7 @@ public class CommandStep implements TemplateStep {
     public void update() {
         // Include OS type in hash to ensure different behavior on different platforms is cached separately
         String osType = isWindows ? "windows" : "unix";
-        hash = "command:" + osType + ":" + command;
+        hash = "command:" + osType + ":" + command + ":" + (input != null ? input : "");
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }
 
@@ -55,6 +62,14 @@ public class CommandStep implements TemplateStep {
         processBuilder.redirectErrorStream(true);
 
         Process process = processBuilder.start();
+
+        // Write input to stdin if provided
+        if (input != null) {
+            try (var writer = process.getOutputStream()) {
+                writer.write((input + "\n").getBytes(StandardCharsets.UTF_8));
+                writer.flush();
+            }
+        }
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
