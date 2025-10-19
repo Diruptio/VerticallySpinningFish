@@ -45,21 +45,14 @@ public class CommandStep implements TemplateStep {
                 .redirectErrorStream(true)
                 .start();
 
-        // Write input to stdin if provided
         if (input != null) {
             process.outputWriter().append(input).append('\n');
-        }
-
-        BufferedReader reader = process.inputReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
         }
 
         try {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                throw new IOException("Command exited with code " + exitCode + " in directory " 
+                throw new IOException("Command exited with code " + exitCode + " in directory "
                         + directory.toAbsolutePath() + ": " + command);
             }
         } catch (InterruptedException e) {
