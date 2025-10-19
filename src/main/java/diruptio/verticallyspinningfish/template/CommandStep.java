@@ -7,12 +7,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import org.jetbrains.annotations.NotNull;
 
 public class CommandStep implements TemplateStep {
+    private final boolean windows = System.getProperty("os.name").toLowerCase().contains("win");
     private final String command;
     private final String input;
-    private final boolean isWindows;
     private String hash;
 
     public CommandStep(@NotNull ConfigSection config) {
@@ -21,24 +22,14 @@ public class CommandStep implements TemplateStep {
         }
         command = config.get("command").toString();
         
-        if (config.contains("input")) {
-            input = config.get("input").toString();
-        } else {
-            input = null;
-        }
-        
-        // Cache OS detection result - using startsWith for more reliable Windows detection
-        String os = System.getProperty("os.name").toLowerCase();
-        isWindows = os.startsWith("windows");
+        input = config.getString("input");
 
         update();
     }
 
     @Override
     public void update() {
-        // Include OS type in hash to ensure different behavior on different platforms is cached separately
-        String osType = isWindows ? "windows" : "unix";
-        hash = "command:" + osType + ":" + command + ":" + (input != null ? input : "");
+        hash = "command:" + command + (input != null ? ":" + input : "");
         hash = Hashing.sha256().hashString(hash, StandardCharsets.UTF_8).toString();
     }
 
@@ -49,30 +40,19 @@ public class CommandStep implements TemplateStep {
 
     @Override
     public void apply(@NotNull Path directory) throws IOException {
-        String[] shellCommand;
-        
-        if (isWindows) {
-            shellCommand = new String[]{"cmd", "/c", command};
-        } else {
-            shellCommand = new String[]{"sh", "-c", command};
-        }
-        
-        ProcessBuilder processBuilder = new ProcessBuilder(shellCommand);
-        processBuilder.directory(directory.toFile());
-        processBuilder.redirectErrorStream(true);
-
-        Process process = processBuilder.start();
+        Process process = new ProcessBuilder()
+                .command(windows ? List.of("cmd", "/c", this.command) : List.of("sh", "-c", this.command))
+                .directory(directory.toFile())
+                .redirectErrorStream(true)
+                .start();
 
         // Write input to stdin if provided
         if (input != null) {
-            try (var writer = process.getOutputStream()) {
-                writer.write((input + "\n").getBytes(StandardCharsets.UTF_8));
-                writer.flush();
-            }
+            process.getOutputStream().write((input + "\n").getBytes());
+            process.getOutputStream().flush();
         }
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);

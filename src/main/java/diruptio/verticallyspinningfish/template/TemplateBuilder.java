@@ -18,13 +18,13 @@ public class TemplateBuilder {
         String type = config.get("type").toString();
 
         return switch (type) {
+            case "command" -> new CommandStep(config);
             case "copy" -> new CopyStep(config);
             case "modrinth" -> new ModrinthStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
             case "papermc-hangar" -> new PaperMCHangarStep(config);
             case "paper-plugin" -> new PaperPluginStep();
             case "velocity-plugin" -> new VelocityPluginStep();
-            case "command" -> new CommandStep(config);
             default -> throw new IllegalArgumentException("Unknown template step type: " + type);
         };
     }
