@@ -18,6 +18,7 @@ public class TemplateBuilder {
         String type = config.get("type").toString();
 
         return switch (type) {
+            case "command" -> new CommandStep(config);
             case "copy" -> new CopyStep(config);
             case "modrinth" -> new ModrinthStep(config);
             case "papermc-fill" -> new PaperMCFillStep(config);
