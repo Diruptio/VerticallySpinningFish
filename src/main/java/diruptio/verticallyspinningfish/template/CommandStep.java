@@ -4,7 +4,6 @@ import com.google.common.hash.Hashing;
 import diruptio.util.config.ConfigSection;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -48,15 +47,13 @@ public class CommandStep implements TemplateStep {
 
         // Write input to stdin if provided
         if (input != null) {
-            process.getOutputStream().write((input + "\n").getBytes());
-            process.getOutputStream().flush();
+            process.outputWriter().append(input).append('\n');
         }
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
+        BufferedReader reader = process.inputReader();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            System.out.println(line);
         }
 
         try {
