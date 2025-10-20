@@ -46,13 +46,19 @@ public class WebApiThread implements Runnable {
                 swaggerConfiguration.setDocumentationPath("/openapi.json");
             }));
             config.router.apiBuilder(() -> {
-                before(new AuthenticationHandler(secret));
+                before("containers", new AuthenticationHandler(secret));
                 get("containers", new ContainersEndpoint());
+                before("container", new AuthenticationHandler(secret));
                 post("container", new ContainerCreateEndpoint());
+                before("container/status", new AuthenticationHandler(secret));
                 patch("container/status", new ContainerStatusEndpoint());
+                before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
+                before("live-updates", new AuthenticationHandler(secret));
                 ws("live-updates", new LiveUpdatesWebSocket());
+                before("player/connect", new AuthenticationHandler(secret));
                 post("player/connect", new PlayerConnectEndpoint());
+                before("prefix", new AuthenticationHandler(secret));
                 get("prefix", new PrefixEndpoint());
                 after(ctx -> {
                     ctx.header("Access-Control-Allow-Origin", "*");
