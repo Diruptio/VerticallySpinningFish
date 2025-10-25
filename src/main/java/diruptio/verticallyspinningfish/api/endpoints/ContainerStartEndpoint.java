@@ -2,39 +2,35 @@ package diruptio.verticallyspinningfish.api.endpoints;
 
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import diruptio.verticallyspinningfish.api.Container;
-import diruptio.verticallyspinningfish.api.ContainerStatusRequest;
-import diruptio.verticallyspinningfish.api.Status;
+import diruptio.verticallyspinningfish.api.ContainerStartRequest;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.openapi.*;
 import org.jetbrains.annotations.NotNull;
 
-public class ContainerStatusEndpoint implements Handler {
+public class ContainerStartEndpoint implements Handler {
     @OpenApi(
-            path = "/container/status",
+            path = "/container/start",
             methods = HttpMethod.PATCH,
-            summary = "Update the status of a container",
+            summary = "Start a container",
             security = @OpenApiSecurity(name = "secret"),
             requestBody = @OpenApiRequestBody(
-                    content = @OpenApiContent(from = ContainerStatusRequest.class),
+                    content = @OpenApiContent(from = ContainerStartRequest.class),
                     required = true),
             responses = @OpenApiResponse(status = "200"))
     @Override
     public void handle(@NotNull Context ctx) {
-        ContainerStatusRequest request = ctx.bodyAsClass(ContainerStatusRequest.class);
-        if (request.status() != Status.AVAILABLE && request.status() != Status.UNAVAILABLE) {
-            throw new BadRequestResponse("Invalid status. Only AVAILABLE or UNAVAILABLE are allowed.");
-        }
+        ContainerStartRequest request = ctx.bodyAsClass(ContainerStartRequest.class);
 
         Container container = VerticallySpinningFish.getContainer(request.id());
         if (container == null) {
             throw new BadRequestResponse("Container not found");
         }
-        if (container.getStatus().isOffline()) {
-            throw new BadRequestResponse("Cannot update status of an offline container");
+        if (container.getStatus().isOnline()) {
+            throw new BadRequestResponse("Cannot start an online container");
         }
 
-        VerticallySpinningFish.setContainerStatus(container, request.status());
+        VerticallySpinningFish.startContainer(container.getId());
     }
 }

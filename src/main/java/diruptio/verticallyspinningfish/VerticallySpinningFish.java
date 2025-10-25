@@ -156,10 +156,10 @@ public class VerticallySpinningFish {
 
                     containers = new ArrayList<>(containers);
                     containers.removeIf(container -> {
-                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.UNAVAILABLE) {
+                        if (container.getStatus() == Status.UNAVAILABLE) {
                             return true;
                         } else if (group.isDeleteOnStop() &&
-                                container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE) {
+                                container.getStatus() == Status.OFFLINE) {
                             deleteContainer(container.getId());
                             return true;
                         } else {
@@ -168,10 +168,8 @@ public class VerticallySpinningFish {
                     });
 
                     for (Container container : containers) {
-                        if (container.getStatus() == diruptio.verticallyspinningfish.api.Status.OFFLINE) {
-                            System.out.println("Starting container: " + container.getName());
-                            dockerClient.startContainerCmd(container.getId()).exec();
-                            LiveUpdatesWebSocket.broadcastUpdate(new ContainerStatusUpdate(container.getId(), diruptio.verticallyspinningfish.api.Status.ONLINE));
+                        if (container.getStatus() == Status.OFFLINE) {
+                            startContainer(container.getId());
                         }
                     }
 
@@ -190,14 +188,14 @@ public class VerticallySpinningFish {
         return new Container(
                 container.getId(),
                 String.join("", container.getNames()).substring(1),
-                Stream.of(container.getPorts()).map(com.github.dockerjava.api.model.ContainerPort::getPublicPort).filter(java.util.Objects::nonNull).toList(),
+                Stream.of(container.getPorts()).map(ContainerPort::getPublicPort).filter(Objects::nonNull).toList(),
                 toApiStatus(container.getState()));
     }
 
-    private static diruptio.verticallyspinningfish.api.Status toApiStatus(String dockerStatus) {
+    private static Status toApiStatus(String dockerStatus) {
         return switch (dockerStatus) {
-            case "restarting", "running" -> diruptio.verticallyspinningfish.api.Status.ONLINE;
-            case "created", "exited", "dead", "removing" -> diruptio.verticallyspinningfish.api.Status.OFFLINE;
+            case "restarting", "running" -> Status.ONLINE;
+            case "created", "exited", "dead", "removing" -> Status.OFFLINE;
             default -> throw new IllegalArgumentException("Unknown docker container status: " + dockerStatus);
         };
     }
@@ -271,15 +269,33 @@ public class VerticallySpinningFish {
                 .exec()
                 .getId();
 
-        Container container = new Container(containerId, containerName, ports, diruptio.verticallyspinningfish.api.Status.ONLINE);
+        Container container = new Container(containerId, containerName, ports, Status.ONLINE);
         containers.add(container);
-
-        System.out.println("Starting container: " + containerName);
-        dockerClient.startContainerCmd(containerId).exec();
-
+        startContainer(container);
         LiveUpdatesWebSocket.broadcastUpdate(new ContainerAddUpdate(container));
 
         return container;
+    }
+
+    private static void startContainer(@NotNull Container container) {
+        System.out.println("Starting container: " + container.getName());
+        dockerClient.startContainerCmd(container.getId()).exec();
+    }
+
+    public static void startContainer(@NotNull String id) {
+        Container container = getContainer(id);
+        if (container != null) {
+            startContainer(container);
+            setContainerStatus(container, Status.ONLINE);
+        }
+    }
+
+    public static void stopContainer(@NotNull String id) {
+        Container container = getContainer(id);
+        if (container != null) {
+            System.out.println("Stopping container: " + container.getName());
+            dockerClient.stopContainerCmd(container.getId()).exec();
+        }
     }
 
     public static void deleteContainer(@NotNull String id) {

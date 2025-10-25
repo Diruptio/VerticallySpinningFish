@@ -170,6 +170,36 @@ public class VerticallySpinningFishApi {
         return null;
     }
 
+    public void startContainer(@NotNull String containerId) {
+        Request request = new Request.Builder()
+                .post(RequestBody.create(gson.toJson(new ContainerStartRequest(containerId)).getBytes()))
+                .url(baseUrl + "/container/start")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                System.err.println("Failed to start container " + containerId + ": " + response.body().string());
+            }
+        } catch (IOException | RuntimeException e) {
+            e.printStackTrace(System.err);
+        }
+    }
+
+    public void stopContainer(@NotNull String containerId) {
+        Request request = new Request.Builder()
+                .post(RequestBody.create(gson.toJson(new ContainerStopRequest(containerId)).getBytes()))
+                .url(baseUrl + "/container/stop")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                System.err.println("Failed to stop container " + containerId + ": " + response.body().string());
+            }
+        } catch (IOException | RuntimeException e) {
+            e.printStackTrace(System.err);
+        }
+    }
+
     public void connectPlayer(@NotNull UUID player, @NotNull String containerId) {
         Request request = new Request.Builder()
                 .post(RequestBody.create(gson.toJson(new PlayerConnectRequest(player, containerId)).getBytes()))

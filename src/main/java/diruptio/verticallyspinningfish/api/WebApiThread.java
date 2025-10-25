@@ -26,6 +26,7 @@ public class WebApiThread implements Runnable {
             config.useVirtualThreads = true;
             config.http.asyncTimeout = 10000L;
             config.bundledPlugins.enableCors(cors -> cors.addRule(CorsPluginConfig.CorsRule::anyHost));
+
             config.registerPlugin(new OpenApiPlugin(openApiConfig -> {
                 openApiConfig.withDocumentationPath("/openapi.json");
                 openApiConfig.withDefinitionConfiguration((version, definition) -> {
@@ -42,24 +43,39 @@ public class WebApiThread implements Runnable {
                     });
                 });
             }));
+
             config.registerPlugin(new SwaggerPlugin(swaggerConfiguration -> {
                 swaggerConfiguration.setDocumentationPath("/openapi.json");
             }));
+
             config.router.apiBuilder(() -> {
                 before("containers", new AuthenticationHandler(secret));
                 get("containers", new ContainersEndpoint());
+
                 before("container", new AuthenticationHandler(secret));
                 post("container", new ContainerCreateEndpoint());
+
+                before("container/start", new AuthenticationHandler(secret));
+                post("container/start", new ContainerStartEndpoint());
+
                 before("container/status", new AuthenticationHandler(secret));
                 patch("container/status", new ContainerStatusEndpoint());
+
+                before("container/stop", new AuthenticationHandler(secret));
+                post("container/stop", new ContainerStopEndpoint());
+
                 before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
+
                 before("live-updates", new AuthenticationHandler(secret));
                 ws("live-updates", new LiveUpdatesWebSocket());
+
                 before("player/connect", new AuthenticationHandler(secret));
                 post("player/connect", new PlayerConnectEndpoint());
+
                 before("prefix", new AuthenticationHandler(secret));
                 get("prefix", new PrefixEndpoint());
+
                 after(ctx -> {
                     ctx.header("Access-Control-Allow-Origin", "*");
                     if (ctx.status().isError()) {
@@ -68,10 +84,12 @@ public class WebApiThread implements Runnable {
                 });
             });
         });
+
         javalin.exception(ValidationException.class, (e, ctx) -> {
             ctx.status(400);
             ctx.json(Map.of("error", e.getMessage(), "errors", e.getErrors()));
         });
+
         Runtime.getRuntime().addShutdownHook(new Thread(javalin::stop));
         javalin.start(7000);
     }
