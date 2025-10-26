@@ -4,11 +4,12 @@ import diruptio.verticallyspinningfish.api.LiveUpdate;
 import io.javalin.websocket.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 
 public class LiveUpdatesWebSocket implements Consumer<WsConfig>, WsConnectHandler, WsCloseHandler {
-    private static final List<WsContext> connections = new ArrayList<>();
+    private static final List<WsContext> connections = new CopyOnWriteArrayList<>();
 
     @Override
     public void accept(WsConfig wsConfig) {
