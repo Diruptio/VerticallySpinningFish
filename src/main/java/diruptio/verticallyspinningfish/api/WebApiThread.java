@@ -67,6 +67,17 @@ public class WebApiThread implements Runnable {
                 before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
 
+                before("group", new AuthenticationHandler(secret));
+                patch("group", new GroupUpdateEndpoint());
+
+                before("group/dockerfile", new AuthenticationHandler(secret));
+                get("group/dockerfile", new GroupDockerfileGetEndpoint());
+                patch("group/dockerfile", new GroupDockerfilePatchEndpoint());
+
+                before("group/template", new AuthenticationHandler(secret));
+                get("group/template", new GroupTemplateGetEndpoint());
+                patch("group/template", new GroupTemplatePatchEndpoint());
+
                 before("live-updates", new AuthenticationHandler(secret));
                 ws("live-updates", new LiveUpdatesWebSocket());
 

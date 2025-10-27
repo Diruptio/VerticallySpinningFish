@@ -246,6 +246,130 @@ public class VerticallySpinningFishApi {
         return containerStatusListeners;
     }
 
+    public void updateGroup(@NotNull GroupUpdateRequest request, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        Request httpRequest = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(request).getBytes()))
+                .url(baseUrl + "/group")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(httpRequest).execute()) {
+            if (response.isSuccessful()) {
+                Group updated = gson.fromJson(response.body().string(), Group.class);
+                // refresh local cache by replacing matching group
+                List<Group> newGroups = new ArrayList<>(groups);
+                boolean replaced = false;
+                for (int i = 0; i < newGroups.size(); i++) {
+                    if (newGroups.get(i).name().equals(updated.name())) {
+                        newGroups.set(i, updated);
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) newGroups.add(updated);
+                groups = Collections.unmodifiableList(newGroups);
+                onSuccess.accept(updated);
+            } else {
+                onError.accept(response.body() != null ? response.body().string() : ("HTTP " + response.code()));
+            }
+        } catch (IOException | RuntimeException e) {
+            onError.accept(e.getMessage());
+        }
+    }
+
+    public @Nullable String getGroupDockerfile(@NotNull String name) {
+        Request request = new Request.Builder()
+                .get()
+                .url(baseUrl + "/group/dockerfile?name=" + name)
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("HTTP " + response.code());
+            GroupDockerfileResponse body = gson.fromJson(response.body().string(), GroupDockerfileResponse.class);
+            return body.dockerfile();
+        } catch (IOException | RuntimeException e) {
+            e.printStackTrace(System.err);
+            return null;
+        }
+    }
+
+    public void updateGroupDockerfile(@NotNull String name, @NotNull String dockerfile, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupDockerfileUpdateRequest body = new GroupDockerfileUpdateRequest(name, dockerfile);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/dockerfile")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                Group updated = gson.fromJson(response.body().string(), Group.class);
+                // update local cache
+                List<Group> newGroups = new ArrayList<>(groups);
+                boolean replaced = false;
+                for (int i = 0; i < newGroups.size(); i++) {
+                    if (newGroups.get(i).name().equals(updated.name())) {
+                        newGroups.set(i, updated);
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) newGroups.add(updated);
+                groups = Collections.unmodifiableList(newGroups);
+                onSuccess.accept(updated);
+            } else {
+                onError.accept(response.body() != null ? response.body().string() : ("HTTP " + response.code()));
+            }
+        } catch (IOException | RuntimeException e) {
+            onError.accept(e.getMessage());
+        }
+    }
+
+    public @NotNull List<Map<String, Object>> getGroupTemplate(@NotNull String name) {
+        Request request = new Request.Builder()
+                .get()
+                .url(baseUrl + "/group/template?name=" + name)
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("HTTP " + response.code());
+            GroupTemplateResponse body = gson.fromJson(response.body().string(), GroupTemplateResponse.class);
+            return body.template();
+        } catch (IOException | RuntimeException e) {
+            e.printStackTrace(System.err);
+            return Collections.emptyList();
+        }
+    }
+
+    public void updateGroupTemplate(@NotNull String name, @NotNull List<Map<String, Object>> template, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupTemplateUpdateRequest body = new GroupTemplateUpdateRequest(name, template);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/template")
+                .addHeader("Authorization", secret)
+                .build();
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                Group updated = gson.fromJson(response.body().string(), Group.class);
+                // update local cache
+                List<Group> newGroups = new ArrayList<>(groups);
+                boolean replaced = false;
+                for (int i = 0; i < newGroups.size(); i++) {
+                    if (newGroups.get(i).name().equals(updated.name())) {
+                        newGroups.set(i, updated);
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) newGroups.add(updated);
+                groups = Collections.unmodifiableList(newGroups);
+                onSuccess.accept(updated);
+            } else {
+                onError.accept(response.body() != null ? response.body().string() : ("HTTP " + response.code()));
+            }
+        } catch (IOException | RuntimeException e) {
+            onError.accept(e.getMessage());
+        }
+    }
+
     public static @NotNull VerticallySpinningFishApi fromCurrentContainer() {
         String containerPrefix = System.getenv("VSF_PREFIX");
         String baseUrl = "http://172.17.0.1:" + System.getenv("VSF_API_PORT");

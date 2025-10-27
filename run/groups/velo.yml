@@ -1,0 +1,12 @@
+min-count: 1
+min-port: 25565
+delete-on-stop: true
+
+template:
+  - type: velocity-plugin
+  - type: papermc-fill
+    project: velocity
+    file: server.jar
+  - type: copy
+    from: templates/velo
+    into: .

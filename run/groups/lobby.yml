@@ -1,0 +1,21 @@
+min-count: 1
+min-port: 40000
+tags: [register-velocity, velocity-fallback]
+delete-on-stop: true
+
+template:
+  - type: papermc-fill
+    project: paper
+    version: "1.21.8"
+    file: server.jar
+  - type: papermc-hangar
+    project: ViaVersion
+    platform: paper
+    file: plugins/ViaVersion.jar
+  - type: papermc-hangar
+    project: ViaBackwards
+    platform: paper
+    file: plugins/ViaBackwards.jar
+  - type: copy
+    from: templates/lobby
+    into: .
