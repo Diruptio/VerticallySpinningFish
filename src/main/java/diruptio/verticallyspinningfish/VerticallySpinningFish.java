@@ -323,6 +323,48 @@ public class VerticallySpinningFish {
         System.out.println("Status of container " + container.getId() + " changed to " + status);
     }
 
+    public static void updateGroupMinCount(@NotNull String name, int minCount) {
+        updateGroupConfig(name, config -> config.set("min-count", minCount));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupMinCountUpdate(name, minCount));
+        System.out.println("Updated min-count of group " + name + " to " + minCount);
+    }
+
+    public static void updateGroupMinPort(@NotNull String name, int minPort) {
+        updateGroupConfig(name, config -> config.set("min-port", minPort));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupMinPortUpdate(name, minPort));
+        System.out.println("Updated min-port of group " + name + " to " + minPort);
+    }
+
+    public static void updateGroupDeleteOnStop(@NotNull String name, boolean deleteOnStop) {
+        updateGroupConfig(name, config -> config.set("delete-on-stop", deleteOnStop));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupDeleteOnStopUpdate(name, deleteOnStop));
+        System.out.println("Updated delete-on-stop of group " + name + " to " + deleteOnStop);
+    }
+
+    public static void updateGroupTags(@NotNull String name, @NotNull Set<String> tags) {
+        updateGroupConfig(name, config -> config.set("tags", tags.stream().toList()));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupTagsUpdate(name, tags));
+        System.out.println("Updated tags of group " + name + " to " + tags);
+    }
+
+    private static void updateGroupConfig(@NotNull String name, @NotNull java.util.function.Consumer<Config> configUpdater) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        configUpdater.accept(config);
+        config.save();
+    }
+
+    private static void reloadGroup(@NotNull String name) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Group group = Group.read(yamlPath);
+        groups.put(group.getName(), group);
+        group.rebuildImageIfNeeded();
+    }
+
     public static @NotNull String getContainerPrefix() {
         return containerPrefix;
     }

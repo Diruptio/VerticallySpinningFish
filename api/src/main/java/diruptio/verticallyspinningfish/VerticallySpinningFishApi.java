@@ -246,28 +246,52 @@ public class VerticallySpinningFishApi {
         return containerStatusListeners;
     }
 
-    public void updateGroup(@NotNull GroupUpdateRequest request, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
-        Request httpRequest = new Request.Builder()
-                .patch(RequestBody.create(gson.toJson(request).getBytes()))
-                .url(baseUrl + "/group")
+    public void updateGroupMinCount(@NotNull String name, int minCount, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupMinCountUpdateRequest body = new GroupMinCountUpdateRequest(name, minCount);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/min-count")
                 .addHeader("Authorization", secret)
                 .build();
-        try (Response response = httpClient.newCall(httpRequest).execute()) {
+        updateGroupProperty(request, onSuccess, onError);
+    }
+
+    public void updateGroupMinPort(@NotNull String name, int minPort, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupMinPortUpdateRequest body = new GroupMinPortUpdateRequest(name, minPort);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/min-port")
+                .addHeader("Authorization", secret)
+                .build();
+        updateGroupProperty(request, onSuccess, onError);
+    }
+
+    public void updateGroupDeleteOnStop(@NotNull String name, boolean deleteOnStop, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupDeleteOnStopUpdateRequest body = new GroupDeleteOnStopUpdateRequest(name, deleteOnStop);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/delete-on-stop")
+                .addHeader("Authorization", secret)
+                .build();
+        updateGroupProperty(request, onSuccess, onError);
+    }
+
+    public void updateGroupTags(@NotNull String name, @NotNull Set<String> tags, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        GroupTagsUpdateRequest body = new GroupTagsUpdateRequest(name, tags);
+        Request request = new Request.Builder()
+                .patch(RequestBody.create(gson.toJson(body).getBytes()))
+                .url(baseUrl + "/group/tags")
+                .addHeader("Authorization", secret)
+                .build();
+        updateGroupProperty(request, onSuccess, onError);
+    }
+
+    private void updateGroupProperty(@NotNull Request request, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
+        try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                Group updated = gson.fromJson(response.body().string(), Group.class);
-                // refresh local cache by replacing matching group
-                List<Group> newGroups = new ArrayList<>(groups);
-                boolean replaced = false;
-                for (int i = 0; i < newGroups.size(); i++) {
-                    if (newGroups.get(i).name().equals(updated.name())) {
-                        newGroups.set(i, updated);
-                        replaced = true;
-                        break;
-                    }
-                }
-                if (!replaced) newGroups.add(updated);
-                groups = Collections.unmodifiableList(newGroups);
-                onSuccess.accept(updated);
+                // The endpoint doesn't return content, so we signal success without a group object
+                // The actual group update will come via WebSocket
+                onSuccess.accept(null);
             } else {
                 onError.accept(response.body() != null ? response.body().string() : ("HTTP " + response.code()));
             }

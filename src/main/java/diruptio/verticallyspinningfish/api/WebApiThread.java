@@ -67,8 +67,17 @@ public class WebApiThread implements Runnable {
                 before("groups", new AuthenticationHandler(secret));
                 get("groups", new GroupsEndpoint());
 
-                before("group", new AuthenticationHandler(secret));
-                patch("group", new GroupUpdateEndpoint());
+                before("group/min-count", new AuthenticationHandler(secret));
+                patch("group/min-count", new GroupMinCountPatchEndpoint());
+
+                before("group/min-port", new AuthenticationHandler(secret));
+                patch("group/min-port", new GroupMinPortPatchEndpoint());
+
+                before("group/delete-on-stop", new AuthenticationHandler(secret));
+                patch("group/delete-on-stop", new GroupDeleteOnStopPatchEndpoint());
+
+                before("group/tags", new AuthenticationHandler(secret));
+                patch("group/tags", new GroupTagsPatchEndpoint());
 
                 before("group/dockerfile", new AuthenticationHandler(secret));
                 get("group/dockerfile", new GroupDockerfileGetEndpoint());

@@ -2,9 +2,9 @@ package diruptio.verticallyspinningfish.api;
 
 import org.jetbrains.annotations.NotNull;
 
-public record GroupUpdateUpdate(@NotNull Group group) implements LiveUpdate {
+public record GroupMinPortUpdate(@NotNull String name, int minPort) implements LiveUpdate {
     @Override
     public @NotNull String type() {
-        return "group_update";
+        return "group_min_port";
     }
 }
