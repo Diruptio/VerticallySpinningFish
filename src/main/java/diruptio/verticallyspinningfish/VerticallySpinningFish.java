@@ -324,49 +324,41 @@ public class VerticallySpinningFish {
     }
 
     public static void updateGroupMinCount(@NotNull String name, int minCount) {
-        Path yamlPath = Path.of("groups").resolve(name + ".yml");
-        Config config = new Config(yamlPath, Config.Type.YAML);
-        config.set("min-count", minCount);
-        config.save();
-        reloadAndBroadcastGroup(yamlPath);
+        updateGroupConfig(name, config -> config.set("min-count", minCount));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupMinCountUpdate(name, minCount));
     }
 
     public static void updateGroupMinPort(@NotNull String name, int minPort) {
-        Path yamlPath = Path.of("groups").resolve(name + ".yml");
-        Config config = new Config(yamlPath, Config.Type.YAML);
-        config.set("min-port", minPort);
-        config.save();
-        reloadAndBroadcastGroup(yamlPath);
+        updateGroupConfig(name, config -> config.set("min-port", minPort));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupMinPortUpdate(name, minPort));
     }
 
     public static void updateGroupDeleteOnStop(@NotNull String name, boolean deleteOnStop) {
-        Path yamlPath = Path.of("groups").resolve(name + ".yml");
-        Config config = new Config(yamlPath, Config.Type.YAML);
-        config.set("delete-on-stop", deleteOnStop);
-        config.save();
-        reloadAndBroadcastGroup(yamlPath);
+        updateGroupConfig(name, config -> config.set("delete-on-stop", deleteOnStop));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupDeleteOnStopUpdate(name, deleteOnStop));
     }
 
     public static void updateGroupTags(@NotNull String name, @NotNull Set<String> tags) {
-        Path yamlPath = Path.of("groups").resolve(name + ".yml");
-        Config config = new Config(yamlPath, Config.Type.YAML);
-        config.set("tags", tags.stream().toList());
-        config.save();
-        reloadAndBroadcastGroup(yamlPath);
+        updateGroupConfig(name, config -> config.set("tags", tags.stream().toList()));
+        reloadGroup(name);
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupTagsUpdate(name, tags));
     }
 
-    private static void reloadAndBroadcastGroup(@NotNull Path yamlPath) {
+    private static void updateGroupConfig(@NotNull String name, @NotNull java.util.function.Consumer<Config> configUpdater) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        configUpdater.accept(config);
+        config.save();
+    }
+
+    private static void reloadGroup(@NotNull String name) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
         Group group = Group.read(yamlPath);
         groups.put(group.getName(), group);
         group.rebuildImageIfNeeded();
-
-        diruptio.verticallyspinningfish.api.Group apiGroup = new diruptio.verticallyspinningfish.api.Group(
-                group.getName(),
-                group.getMinCount(),
-                group.getMinPort(),
-                group.isDeleteOnStop(),
-                group.getTags());
-        LiveUpdatesWebSocket.broadcastUpdate(new GroupUpdateUpdate(apiGroup));
     }
 
     public static @NotNull String getContainerPrefix() {
