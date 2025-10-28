@@ -1,10 +1,7 @@
 package diruptio.verticallyspinningfish.api.endpoints;
 
-import diruptio.util.config.Config;
-import diruptio.verticallyspinningfish.Group;
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import diruptio.verticallyspinningfish.api.GroupTagsUpdateRequest;
-import diruptio.verticallyspinningfish.api.GroupUpdateUpdate;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
@@ -24,7 +21,7 @@ public class GroupTagsPatchEndpoint implements Handler {
             requestBody = @OpenApiRequestBody(
                     content = @OpenApiContent(from = GroupTagsUpdateRequest.class),
                     required = true),
-            responses = @OpenApiResponse(status = "200", content = @OpenApiContent(from = diruptio.verticallyspinningfish.api.Group.class)))
+            responses = @OpenApiResponse(status = "200"))
     @Override
     public void handle(@NotNull Context ctx) {
         GroupTagsUpdateRequest request = ctx.bodyAsClass(GroupTagsUpdateRequest.class);
@@ -39,25 +36,6 @@ public class GroupTagsPatchEndpoint implements Handler {
         }
 
         Set<String> tags = new HashSet<>(request.tags());
-
-        // Load current config
-        Config config = new Config(yamlPath, Config.Type.YAML);
-        config.set("tags", tags.stream().toList());
-        config.save();
-
-        // Reload, replace in-memory, and rebuild if needed
-        Group group = Group.read(yamlPath);
-        VerticallySpinningFish.getGroups().put(group.getName(), group);
-        group.rebuildImageIfNeeded();
-
-        // Broadcast update
-        diruptio.verticallyspinningfish.api.Group apiGroup = new diruptio.verticallyspinningfish.api.Group(
-                group.getName(),
-                group.getMinCount(),
-                group.getMinPort(),
-                group.isDeleteOnStop(),
-                group.getTags());
-        LiveUpdatesWebSocket.broadcastUpdate(new GroupUpdateUpdate(apiGroup));
-        ctx.json(apiGroup);
+        VerticallySpinningFish.updateGroupTags(name, tags);
     }
 }

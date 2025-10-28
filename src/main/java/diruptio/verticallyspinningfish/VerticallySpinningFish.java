@@ -323,6 +323,52 @@ public class VerticallySpinningFish {
         System.out.println("Status of container " + container.getId() + " changed to " + status);
     }
 
+    public static void updateGroupMinCount(@NotNull String name, int minCount) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        config.set("min-count", minCount);
+        config.save();
+        reloadAndBroadcastGroup(yamlPath);
+    }
+
+    public static void updateGroupMinPort(@NotNull String name, int minPort) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        config.set("min-port", minPort);
+        config.save();
+        reloadAndBroadcastGroup(yamlPath);
+    }
+
+    public static void updateGroupDeleteOnStop(@NotNull String name, boolean deleteOnStop) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        config.set("delete-on-stop", deleteOnStop);
+        config.save();
+        reloadAndBroadcastGroup(yamlPath);
+    }
+
+    public static void updateGroupTags(@NotNull String name, @NotNull Set<String> tags) {
+        Path yamlPath = Path.of("groups").resolve(name + ".yml");
+        Config config = new Config(yamlPath, Config.Type.YAML);
+        config.set("tags", tags.stream().toList());
+        config.save();
+        reloadAndBroadcastGroup(yamlPath);
+    }
+
+    private static void reloadAndBroadcastGroup(@NotNull Path yamlPath) {
+        Group group = Group.read(yamlPath);
+        groups.put(group.getName(), group);
+        group.rebuildImageIfNeeded();
+
+        diruptio.verticallyspinningfish.api.Group apiGroup = new diruptio.verticallyspinningfish.api.Group(
+                group.getName(),
+                group.getMinCount(),
+                group.getMinPort(),
+                group.isDeleteOnStop(),
+                group.getTags());
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupUpdateUpdate(apiGroup));
+    }
+
     public static @NotNull String getContainerPrefix() {
         return containerPrefix;
     }

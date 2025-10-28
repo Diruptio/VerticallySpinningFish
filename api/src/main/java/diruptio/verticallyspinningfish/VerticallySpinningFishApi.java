@@ -289,20 +289,9 @@ public class VerticallySpinningFishApi {
     private void updateGroupProperty(@NotNull Request request, @NotNull Consumer<Group> onSuccess, @NotNull Consumer<String> onError) {
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                Group updated = gson.fromJson(response.body().string(), Group.class);
-                // refresh local cache by replacing matching group
-                List<Group> newGroups = new ArrayList<>(groups);
-                boolean replaced = false;
-                for (int i = 0; i < newGroups.size(); i++) {
-                    if (newGroups.get(i).name().equals(updated.name())) {
-                        newGroups.set(i, updated);
-                        replaced = true;
-                        break;
-                    }
-                }
-                if (!replaced) newGroups.add(updated);
-                groups = Collections.unmodifiableList(newGroups);
-                onSuccess.accept(updated);
+                // The endpoint doesn't return content, so we signal success without a group object
+                // The actual group update will come via WebSocket
+                onSuccess.accept(null);
             } else {
                 onError.accept(response.body() != null ? response.body().string() : ("HTTP " + response.code()));
             }
