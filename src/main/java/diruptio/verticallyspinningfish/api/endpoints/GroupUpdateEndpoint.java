@@ -4,6 +4,7 @@ import diruptio.util.config.Config;
 import diruptio.verticallyspinningfish.Group;
 import diruptio.verticallyspinningfish.VerticallySpinningFish;
 import diruptio.verticallyspinningfish.api.GroupUpdateRequest;
+import diruptio.verticallyspinningfish.api.GroupUpdateUpdate;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
@@ -23,9 +24,7 @@ public class GroupUpdateEndpoint implements Handler {
             requestBody = @OpenApiRequestBody(
                     content = @OpenApiContent(from = GroupUpdateRequest.class),
                     required = true),
-            responses = @OpenApiResponse(
-                    status = "200",
-                    content = @OpenApiContent(from = diruptio.verticallyspinningfish.api.Group.class)))
+            responses = @OpenApiResponse(status = "200"))
     @Override
     public void handle(@NotNull Context ctx) {
         GroupUpdateRequest request = ctx.bodyAsClass(GroupUpdateRequest.class);
@@ -73,14 +72,13 @@ public class GroupUpdateEndpoint implements Handler {
         VerticallySpinningFish.getGroups().put(group.getName(), group);
         group.rebuildImageIfNeeded();
 
-        // Respond with API representation
+        // Broadcast update
         diruptio.verticallyspinningfish.api.Group apiGroup = new diruptio.verticallyspinningfish.api.Group(
                 group.getName(),
                 group.getMinCount(),
                 group.getMinPort(),
                 group.isDeleteOnStop(),
-                group.getTags()
-        );
-        ctx.json(apiGroup);
+                group.getTags());
+        LiveUpdatesWebSocket.broadcastUpdate(new GroupUpdateUpdate(apiGroup));
     }
 }
