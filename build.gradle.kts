@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":common"))
     implementation("diruptio:DiruptioUtil:1.6.28")
     implementation("com.github.docker-java:docker-java:3.6.0")
-    implementation("com.squareup.okhttp3:okhttp:5.1.0")
+    implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("org.slf4j:slf4j-simple:2.0.17")
     implementation("io.javalin:javalin:6.7.0")
     implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0-2")
