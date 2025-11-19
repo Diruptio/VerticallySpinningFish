@@ -13,7 +13,7 @@ configurations.compileClasspath.get().extendsFrom(copyClasspath)
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
     add("copy", project(":common"))
-    implementation("com.squareup.okhttp3:okhttp:5.1.0")
+    implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("com.google.code.gson:gson:2.13.2")
 }
 
