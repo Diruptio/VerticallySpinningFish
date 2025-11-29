@@ -279,7 +279,11 @@ public class VerticallySpinningFish {
 
     private static void startContainer(@NotNull Container container) {
         System.out.println("Starting container: " + container.getName());
-        dockerClient.startContainerCmd(container.getId()).exec();
+        try {
+            dockerClient.startContainerCmd(container.getId()).exec();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+        }
     }
 
     public static void startContainer(@NotNull String id) {
@@ -294,7 +298,11 @@ public class VerticallySpinningFish {
         Container container = getContainer(id);
         if (container != null) {
             System.out.println("Stopping container: " + container.getName());
-            dockerClient.stopContainerCmd(container.getId()).exec();
+            try {
+                dockerClient.stopContainerCmd(container.getId()).exec();
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
         }
     }
 
@@ -305,14 +313,22 @@ public class VerticallySpinningFish {
         }
 
         System.out.println("Deleting container: " + container.getName());
-        dockerClient.removeContainerCmd(container.getId())
-                .withForce(true)
-                .exec();
+
+        try {
+            dockerClient.removeContainerCmd(container.getId())
+                    .withForce(true)
+                    .exec();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            return;
+        }
+
         try {
             FileUtils.deleteDirectory(Path.of("running", container.getName()).toFile());
         } catch (IOException e) {
             new Exception("Failed to delete container data", e).printStackTrace(System.err);
         }
+
         containers.remove(container);
         LiveUpdatesWebSocket.broadcastUpdate(new ContainerRemoveUpdate(container.getId()));
     }
