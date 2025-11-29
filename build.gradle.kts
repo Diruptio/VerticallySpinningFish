@@ -24,7 +24,7 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.17")
     implementation("io.javalin:javalin:6.7.0")
     implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0-2")
-    implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0-2")
+    implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0-5")
     annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:6.7.0-2")
     runtimeOnly("javax.activation:activation:1.1.1")
 }
