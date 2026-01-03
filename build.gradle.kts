@@ -18,7 +18,7 @@ repositories {
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
     implementation(project(":common"))
-    implementation("diruptio:DiruptioUtil:1.7.6")
+    implementation("diruptio:DiruptioUtil:1.8.5")
     implementation("com.github.docker-java:docker-java:3.7.0")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("org.slf4j:slf4j-simple:2.0.17")
