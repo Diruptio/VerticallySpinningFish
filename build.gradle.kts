@@ -25,7 +25,7 @@ dependencies {
     implementation("io.javalin:javalin:6.7.0")
     implementation("io.javalin.community.openapi:javalin-openapi-plugin:6.7.0-2")
     implementation("io.javalin.community.openapi:javalin-swagger-plugin:6.7.0-2")
-    annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:6.7.0-2")
+    annotationProcessor("io.javalin.community.openapi:openapi-annotation-processor:7.2.2")
     runtimeOnly("javax.activation:activation:1.1.1")
 }
 
